@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Dashboard Eksekutif Owner — KOPI MAHASISWA. Analisis Statistik Penjualan, Omset, Tren dan Performa Menu Kafe.">
+  <title>👑 Owner Dashboard — KOPI MAHASISWA</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
+
+  <!-- Google Fonts — Playfair Display + Caveat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Google Fonts & Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/owner.css">
+
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="owner-body">
+
+  <!-- ===================================================
+       1. OWNER TOPBAR & CONTROLS
+       =================================================== -->
+  <header class="owner-navbar">
+    <div class="owner-brand">
+      <div class="owner-brand-icon">👑</div>
+      <div>
+        <div class="owner-brand-title">KOPI MAHASISWA</div>
+        <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+          <span class="owner-brand-badge">Executive Owner Suite</span>
+          <span style="font-size: 0.72rem; color: #D4BEA9;">• Analytics Dashboard</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Waktu (Hari Ini, Minggu Ini, Bulan Ini) -->
+    <div class="owner-topbar-controls">
+      <div class="owner-timeframe-bar" role="tablist" aria-label="Filter Periode Penjualan">
+        <button class="owner-timeframe-btn active" data-timeframe="hari_ini" role="tab" aria-selected="true">
+          <span>☀️</span>
+          <span>Hari Ini</span>
+        </button>
+        <button class="owner-timeframe-btn" data-timeframe="minggu_ini" role="tab" aria-selected="false">
+          <span>📆</span>
+          <span>Minggu Ini</span>
+        </button>
+        <button class="owner-timeframe-btn" data-timeframe="bulan_ini" role="tab" aria-selected="false">
+          <span>🗓️</span>
+          <span>Bulan Ini</span>
+        </button>
+      </div>
+
+      <div class="owner-actions-group">
+        <button class="owner-btn-secondary" id="ownerRefreshBtn" title="Muat ulang data live dari MySQL">
+          <span>🔄</span>
+          <span>Perbarui Data</span>
+        </button>
+        <button class="owner-btn-secondary" id="ownerPrintBtn" title="Cetak Ringkasan Eksekutif">
+          <span>🖨️</span>
+          <span>Cetak Laporan</span>
+        </button>
+        <a href="admin.html" class="owner-btn-secondary" title="Buka Panel Admin">
+          <span>🛠️</span>
+          <span>Admin Panel</span>
+        </a>
+        <a href="index.html" class="owner-btn-secondary" style="border-color: rgba(245, 158, 11, 0.4); color: #FBBF24;" target="_blank" title="Buka Web Pelanggan">
+          <span>☕</span>
+          <span>Web Kafe ↗</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================
+       2. MAIN CONTENT
+       =================================================== -->
+  <main class="owner-container">
+    
+    <!-- Header Banner & Real-Time Status -->
+    <section class="owner-header-banner">
+      <div>
+        <h1 class="owner-welcome-title">
+          <span>Ringkasan Eksekutif & Statistik Penjualan</span>
+          <span style="font-size: 1.2rem;">📊</span>
+        </h1>
+        <p class="owner-welcome-sub">
+          Periode Analisis: <strong id="ownerPeriodLabel" style="color: #FBBF24;">Memuat periode...</strong> — Sumber Data: MySQL Database <code style="background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; color: #4ADE80;">kopi.pesanan</code>
+        </p>
+      </div>
+
+      <div class="owner-live-tag">
+        <span class="live-pulse-dot"></span>
+        <span>MySQL Live Connected</span>
+      </div>
+    </section>
+
+    <!-- ===================================================
+         3. 4 SUMMARY KPI CARDS
+         =================================================== -->
+    <section class="owner-kpi-grid">
+      <!-- KPI 1: Total Omset (Rp) -->
+      <div class="owner-kpi-card card-omset">
+        <div class="kpi-accent-glow"></div>
+        <div class="kpi-header">
+          <span class="kpi-label">Total Omset Penjualan</span>
+          <div class="kpi-icon-wrap" style="color: #FBBF24;">💰</div>
+        </div>
+        <div class="kpi-value" id="ownerKpiOmset">Rp 0</div>
+        <div class="kpi-sub">
+          <span style="color: #4ADE80;">●</span>
+          <span>Pendapatan kotor terbayar</span>
+        </div>
+      </div>
+
+      <!-- KPI 2: Total Pesanan Terjual -->
+      <div class="owner-kpi-card">
+        <div class="kpi-accent-glow" style="background: linear-gradient(90deg, #3B82F6, #60A5FA);"></div>
+        <div class="kpi-header">
+          <span class="kpi-label">Total Pesanan Terjual</span>
+          <div class="kpi-icon-wrap" style="color: #60A5FA;">🧾</div>
+        </div>
+        <div class="kpi-value" id="ownerKpiOrders">0 Pesanan</div>
+        <div class="kpi-sub" id="ownerKpiItems">
+          <span style="color: #60A5FA;">📦</span>
+          <span>0 porsi terjual</span>
+        </div>
+      </div>
+
+      <!-- KPI 3: Menu Terlaris (Top Seller) -->
+      <div class="owner-kpi-card card-top-seller">
+        <div class="kpi-accent-glow" style="background: linear-gradient(90deg, #EC4899, #F43F5E);"></div>
+        <div class="kpi-header">
+          <span class="kpi-label">Menu Terlaris (Top Seller)</span>
+          <div class="kpi-icon-wrap" style="color: #F43F5E;">🏆</div>
+        </div>
+        <div class="bestseller-preview-wrap">
+          <img src="images/kopi-susu.jpg" alt="Bestseller" class="bestseller-thumb" id="ownerBestsellerThumb">
+          <div style="overflow: hidden;">
+            <div class="kpi-value" id="ownerBestsellerName" style="font-size: 1.15rem; margin: 0;">-</div>
+            <div class="kpi-sub" id="ownerBestsellerSub" style="color: #FBBF24;">0 Porsi</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI 4: Rata-rata Nilai Transaksi (AOV) -->
+      <div class="owner-kpi-card">
+        <div class="kpi-accent-glow" style="background: linear-gradient(90deg, #10B981, #34D399);"></div>
+        <div class="kpi-header">
+          <span class="kpi-label">Rata-rata Transaksi (AOV)</span>
+          <div class="kpi-icon-wrap" style="color: #34D399;">📊</div>
+        </div>
+        <div class="kpi-value" id="ownerKpiAov">Rp 0</div>
+        <div class="kpi-sub">
+          <span style="color: #34D399;">💳</span>
+          <span>Nilai rata-rata per pesanan</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================
+         4. GRAFIK TREN PENJUALAN HARIAN / MINGGUAN
+         =================================================== -->
+    <section class="owner-card">
+      <div class="owner-card-header">
+        <div class="owner-card-title-wrap">
+          <div style="font-size: 1.4rem;">📈</div>
+          <div>
+            <h2 class="owner-card-title">Grafik Tren Omset Penjualan & Frekuensi Pesanan</h2>
+            <p class="owner-card-subtitle">Visualisasi fluktuasi pendapatan harian, mingguan, dan bulanan berbasis data riil MySQL</p>
+          </div>
+        </div>
+        <div style="font-size: 0.8rem; color: #D4BEA9; display: flex; align-items: center; gap: 14px;">
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <span style="display: inline-block; width: 12px; height: 3px; background: #F59E0B; border-radius: 2px;"></span>
+            <span>Omset (Rp)</span>
+          </span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <span style="display: inline-block; width: 12px; height: 3px; background: #4ADE80; border-radius: 2px;"></span>
+            <span>Pesanan (Tx)</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="chart-wrapper">
+        <canvas id="ownerChartCanvas"></canvas>
+      </div>
+    </section>
+
+    <!-- ===================================================
+         5. TOP 5 MENU TERLARIS & 5 MENU SEPI PENJUALAN
+         =================================================== -->
+    <section class="owner-tables-grid">
+      <!-- Kolom Kiri: Top 5 Menu Paling Laris -->
+      <div class="owner-card" style="margin-bottom: 0;">
+        <div class="owner-card-header" style="margin-bottom: 16px;">
+          <div class="owner-card-title-wrap">
+            <span style="font-size: 1.3rem;">🌟</span>
+            <div>
+              <h3 class="owner-card-title" style="font-size: 1.15rem;">Top 5 Menu Paling Laris</h3>
+              <p class="owner-card-subtitle">Produk unggulan dengan volume & omset penjualan tertinggi</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="owner-table">
+            <thead>
+              <tr>
+                <th style="width: 44px; text-align: center;">Rank</th>
+                <th>Menu</th>
+                <th>Terjual</th>
+                <th>Omset</th>
+                <th>Kontribusi</th>
+                <th>Stok</th>
+              </tr>
+            </thead>
+            <tbody id="ownerTopMenusTableBody">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 24px; color: #A89080;">
+                  Memuat data menu terlaris...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Kolom Kanan: 5 Menu Sepi Penjualan (Low Sellers) -->
+      <div class="owner-card" style="margin-bottom: 0;">
+        <div class="owner-card-header" style="margin-bottom: 16px;">
+          <div class="owner-card-title-wrap">
+            <span style="font-size: 1.3rem;">⚠️</span>
+            <div>
+              <h3 class="owner-card-title" style="font-size: 1.15rem;">5 Menu Sepi Penjualan</h3>
+              <p class="owner-card-subtitle">Perlu optimasi promo diskon, strategi bundling, atau revisi menu</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="owner-table">
+            <thead>
+              <tr>
+                <th style="width: 36px; text-align: center;">#</th>
+                <th>Menu</th>
+                <th>Terjual</th>
+                <th>Stok</th>
+                <th>Rekomendasi Strategi Owner</th>
+              </tr>
+            </thead>
+            <tbody id="ownerLowMenusTableBody">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 24px; color: #A89080;">
+                  Memuat data menu sepi penjualan...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================
+         6. METODE PEMBAYARAN & RINGKASAN FINANSIAL
+         =================================================== -->
+    <section class="owner-card" style="margin-top: 28px; margin-bottom: 0;">
+      <div class="owner-card-header" style="margin-bottom: 16px;">
+        <div class="owner-card-title-wrap">
+          <span style="font-size: 1.3rem;">💳</span>
+          <div>
+            <h3 class="owner-card-title" style="font-size: 1.15rem;">Distribusi Metode Pembayaran</h3>
+            <p class="owner-card-subtitle">Perbandingan transaksi digital QRIS vs uang tunai (Cash)</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="owner-payment-grid">
+        <div class="owner-pay-card">
+          <div class="pay-card-left">
+            <div class="pay-card-icon" style="color: #60A5FA;">📱</div>
+            <div>
+              <div style="font-weight: 700; color: #FFF; font-size: 0.95rem;">QRIS Statis / Dinamis</div>
+              <div id="ownerPayQrisCount" style="font-size: 0.8rem; color: #D4BEA9;">0 Transaksi</div>
+            </div>
+          </div>
+          <div class="pay-card-nominal" id="ownerPayQrisAmount" style="color: #60A5FA;">Rp 0</div>
+        </div>
+
+        <div class="owner-pay-card">
+          <div class="pay-card-left">
+            <div class="pay-card-icon" style="color: #34D399;">💵</div>
+            <div>
+              <div style="font-weight: 700; color: #FFF; font-size: 0.95rem;">Uang Tunai (Cash)</div>
+              <div id="ownerPayCashCount" style="font-size: 0.8rem; color: #D4BEA9;">0 Transaksi</div>
+            </div>
+          </div>
+          <div class="pay-card-nominal" id="ownerPayCashAmount" style="color: #34D399;">Rp 0</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================
+       SCRIPTS
+       =================================================== -->
+  <script src="js/products.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/owner.js"></script>
+
+  <!-- ✦ Developer Watermark (2-Baris Elegan) ✦ -->
+  <div class="dev-watermark dev-watermark-owner" aria-label="Developer Credit">
+    <span class="dev-watermark-version">Virtual Barista v2.4</span>
+    <span class="dev-watermark-credit">Created with ☕ by <em class="dev-author">Fathialaziz</em></span>
+  </div>
+
+</body>
+</html>

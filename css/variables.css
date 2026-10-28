@@ -1,0 +1,188 @@
+/* ===================================================
+   KOPI MAHASISWA — DESIGN SYSTEM VARIABLES
+   Concept: Modern Coffee Shop × College Life × Comic Illustration
+   =================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Coffee Brown Palette */
+  --coffee-950: #190C06;
+  --coffee-900: #24130B;
+  --coffee-800: #2E190E;
+  --coffee-700: #3E2314;
+  --coffee-600: #54331D;
+  --coffee-500: #6F452A;
+  --coffee-400: #8C5B39;
+
+  /* Caramel & Warm Accents */
+  --caramel-dark: #A45823;
+  --caramel: #C67C4E;
+  --caramel-light: #E09867;
+  --caramel-soft: #F4E2D4;
+  --caramel-glow: rgba(198, 124, 78, 0.25);
+
+  /* Cream, Beige & Off-white */
+  --beige-dark: #D4BEA9;
+  --beige: #E6D5C3;
+  --beige-light: #EFE4D7;
+  --cream: #F8F2EB;
+  --cream-soft: #FCF8F4;
+  --off-white: #FFFEFC;
+  --white: #FFFFFF;
+
+  /* Comic & Badge Pop Accents */
+  --comic-yellow: #FFCF55;
+  --comic-yellow-soft: #FFF5DC;
+  --comic-orange: #FF7A3D;
+  --comic-green: #2E9E68;
+  --comic-green-soft: #E5F8EE;
+  --comic-border: #2E190E;
+
+  /* Typography Colors */
+  --text-primary: #24130B;
+  --text-secondary: #5C4133;
+  --text-muted: #8E7466;
+  --text-light: #FAF5F0;
+  --text-caramel: #C67C4E;
+
+  /* Card & Surfaces */
+  --bg-main: #FAF5F0;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FFFDF9;
+  --border-subtle: #EBDDCF;
+  --border-card: #EADBCB;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 3px rgba(36, 19, 11, 0.05);
+  --shadow-sm: 0 4px 12px rgba(36, 19, 11, 0.06);
+  --shadow-md: 0 8px 24px rgba(36, 19, 11, 0.08);
+  --shadow-lg: 0 16px 36px rgba(36, 19, 11, 0.12);
+  --shadow-comic: 3px 3px 0px rgba(36, 19, 11, 0.9);
+  --shadow-comic-sm: 2px 2px 0px rgba(36, 19, 11, 0.9);
+  --shadow-comic-hover: 5px 5px 0px rgba(36, 19, 11, 0.9);
+
+  /* Border Radius */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 9999px;
+
+  /* Typography */
+  --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-comic: 'Fredoka', 'Plus Jakarta Sans', sans-serif;
+  --font-doodle: 'Caveat', cursive, sans-serif;
+
+  /* Layout */
+  --container-max: 1240px;
+  --header-height: 76px;
+  --transition-fast: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ===================================================
+   ELEGANT DEVELOPER WATERMARK & BADGE CREDIT
+   Design: Clean Typography × Muted Opacity × Coffee Accent
+   =================================================== */
+.dev-watermark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 16px 0 6px 0;
+  margin-top: 20px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  text-align: center;
+  opacity: 0.8;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  user-select: none;
+}
+
+.dev-watermark:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+/* Baris 1: Virtual Barista v2.4 */
+.dev-watermark-version {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--beige-dark, #A89582);
+  opacity: 0.75;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* Baris 2: Created with ☕ by Fathialaziz */
+.dev-watermark-credit {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 300;
+  letter-spacing: 1.2px;
+  color: var(--beige-light, #F5EBE1);
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dev-watermark-credit .dev-author {
+  font-family: 'Caveat', 'Playfair Display', cursive;
+  font-size: 1.25rem;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--comic-yellow, #FFCF55);
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 12px rgba(255, 207, 85, 0.25);
+  transition: color 0.25s ease, text-shadow 0.25s ease;
+}
+
+.dev-watermark:hover .dev-author {
+  color: #FFE082;
+  text-shadow: 0 0 16px rgba(255, 207, 85, 0.5);
+}
+
+/* Specific Page Adjustments */
+.dev-watermark-chatbot {
+  margin-top: 0;
+  padding: 8px 12px 10px 12px;
+  background: rgba(25, 12, 6, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0 0 var(--radius-lg, 24px) var(--radius-lg, 24px);
+  opacity: 0.82;
+}
+
+.dev-watermark-chatbot .dev-watermark-version {
+  font-size: 0.65rem;
+  letter-spacing: 1.4px;
+}
+
+.dev-watermark-chatbot .dev-watermark-credit {
+  font-size: 0.85rem;
+}
+
+.dev-watermark-chatbot .dev-author {
+  font-size: 1.15rem;
+}
+
+.dev-watermark-admin {
+  margin-top: auto;
+  padding: 14px 10px 8px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dev-watermark-admin .dev-watermark-credit {
+  font-size: 0.88rem;
+}
+
+.dev-watermark-owner {
+  margin-top: 40px;
+  padding: 20px 0 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}

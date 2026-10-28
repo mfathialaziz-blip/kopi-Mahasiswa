@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1793183627863,
+    "name": "syahrul",
+    "campus": "STMIK IKMI CIREBON",
+    "phone": "6285795842205",
+    "cleanPhone": "6285795842205",
+    "password": "",
+    "registeredAt": "2026-10-28T10:33:47.850Z",
+    "status": "Aktif"
+  },
+  {
+    "id": 1793173726537,
+    "name": "faqih",
+    "campus": "ITB",
+    "phone": "6283156957399",
+    "cleanPhone": "6283156957399",
+    "password": "",
+    "registeredAt": "2026-10-28T07:48:46.532Z",
+    "status": "Aktif"
+  },
+  {
+    "id": 1793172838236,
+    "name": "aziz",
+    "campus": "STMIK IKMI CIREBON",
+    "phone": "6285173022407",
+    "cleanPhone": "6285173022407",
+    "password": "",
+    "registeredAt": "2026-10-28T07:33:58.232Z",
+    "status": "Aktif"
+  }
+]

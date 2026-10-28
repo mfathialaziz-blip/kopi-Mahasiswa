@@ -1,0 +1,16 @@
+{
+  "name": "kopi-mahasiswa-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp Bot & Member Notification Service for Kopi Mahasiswa",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "mysql2": "^3.24.6",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.26.0"
+  }
+}
