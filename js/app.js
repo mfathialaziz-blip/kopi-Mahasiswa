@@ -1302,28 +1302,49 @@ document.addEventListener("DOMContentLoaded", () => {
     // Picu Notifikasi Toast Sukses
     showToast(`🎓 Selamat ${name}! Akun Member Kopi Mahasiswa kamu (${campus}) aktif. Welcome Discount 10% siap digunakan!`, "success");
 
-    // Panggil API Bot WA di latar belakang (background fetch via relative/https/http)
-    try {
-      const botApiBase = (typeof window.BOT_API_BASE !== "undefined")
-        ? window.BOT_API_BASE
-        : (window.location.protocol === "https:" ? "" : "http://localhost:3000");
+    // Panggil API Bot WA di latar belakang (Direct Bot -> Proxy PHP)
+    const registerPayload = {
+      name: name,
+      campus: campus,
+      phone: rawPhone,
+      cleanPhone: cleanPhone
+    };
 
-      fetch(`${botApiBase}/api/notif-member`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name,
-          campus: campus,
-          phone: rawPhone,
-          cleanPhone: cleanPhone
-        })
-      })
-      .then(res => res.json())
-      .then(data => console.log('Bot WA sukses kirim notifikasi:', data))
-      .catch(err => console.log('Bot WA offline / gagal kirim:', err));
-    } catch (err) {
-      console.log('Bot WA offline / gagal kirim:', err);
-    }
+    const sendRegisterNotif = async () => {
+      let sent = false;
+      // 1. Coba Direct ke Bot Node.js port 3000
+      try {
+        const directRes = await fetch("http://localhost:3000/api/notif-member", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(registerPayload)
+        });
+        if (directRes.ok) {
+          const directData = await directRes.json().catch(() => null);
+          console.log("📥 [Register Direct Bot 3000]:", directData);
+          if (directData && (directData.success || directData.waSent)) sent = true;
+        }
+      } catch (e) {
+        console.warn("ℹ️ [Register Direct Bot] Fallback ke proxy:", e.message);
+      }
+
+      // 2. Fallback via bot-proxy.php
+      if (!sent) {
+        try {
+          const proxyRes = await fetch("bot-proxy.php?action=notif-member", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(registerPayload)
+          });
+          const proxyData = await proxyRes.json().catch(() => null);
+          console.log("📥 [Register via bot-proxy.php]:", proxyData);
+        } catch (e) {
+          console.warn("⚠️ [Register Proxy Error]:", e.message);
+        }
+      }
+    };
+
+    sendRegisterNotif();
   }
 
   // ===================================================

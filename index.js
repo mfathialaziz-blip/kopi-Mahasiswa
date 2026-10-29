@@ -1041,7 +1041,7 @@ Tunjukkan pesan ini atau Kartu Member Digital ke kasir saat memesan. Selamat ngo
       success: true,
       message: "Notifikasi pendaftaran member berhasil dikirim ke WhatsApp dan disimpan!",
       recipient: formattedNumber,
-      messageId: sendResult.id ? sendResult.id._serialized : "sent",
+      messageId: sendResult && sendResult.id ? sendResult.id._serialized : "sent",
       member: savedRecord,
       elapsedMs: elapsed
     });
