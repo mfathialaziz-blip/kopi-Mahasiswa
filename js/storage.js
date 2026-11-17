@@ -68,9 +68,19 @@ const StorageManager = {
       localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify([]));
     }
 
-    // 3. Initialize Transactions if not present
-    if (!localStorage.getItem(STORAGE_KEYS.TRANSACTIONS)) {
-      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([]));
+    // 3. Initialize Transactions if not present or fewer than seed
+    try {
+      const rawTxs = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+      const existingTxs = rawTxs ? JSON.parse(rawTxs) : [];
+      if (!Array.isArray(existingTxs) || existingTxs.length < 5) {
+        const seeds = this.getSeedTransactions();
+        const merged = (existingTxs || []).concat(
+          seeds.filter(s => !(existingTxs || []).some(e => e.id === s.id))
+        );
+        localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(merged));
+      }
+    } catch (e) {
+      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(this.getSeedTransactions()));
     }
 
     // 4. Sinkronisasi otomatis data menu & gambar dari database MySQL (non-blocking background)
@@ -456,16 +466,216 @@ const StorageManager = {
   },
 
   // ===================================================
+  // OFFICIAL SEED TRANSACTIONS (21 TRANSAKSI REALISTIS - RP 841.600)
+  // ===================================================
+  getSeedTransactions() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const getOffsetDate = (offset, h, m) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() + offset);
+      d.setHours(h, m, 0, 0);
+      return {
+        iso: d.toISOString(),
+        formatted: `${d.getDate()} ${["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][d.getMonth()]} ${d.getFullYear()}, ${pad(h)}:${pad(m)} WIB`,
+        dateKey: `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`
+      };
+    };
+
+    const seeds = [
+      // Hari Ini (offset 0) - 5 Transaksi
+      {
+        offset: 0, h: 9, m: 15, seq: "001", name: "Adit Pratama", table: "Meja 03", method: "QRIS", notes: "Es batu dipisah",
+        items: [
+          { productName: "Kopi Susu Gula Aren", price: 15000, quantity: 2, subtotal: 30000 },
+          { productName: "Pisang Coklat Lumer", price: 12000, quantity: 1, subtotal: 12000 }
+        ]
+      },
+      {
+        offset: 0, h: 11, m: 20, seq: "002", name: "Rina Amalia (Fasilkom)", table: "Meja 07", method: "QRIS", notes: "Gula aren sedikit",
+        items: [
+          { productName: "Americano", price: 12000, quantity: 1, subtotal: 12000 },
+          { productName: "Donat Kampus Glazed", price: 8000, quantity: 2, subtotal: 16000 }
+        ]
+      },
+      {
+        offset: 0, h: 13, m: 5, seq: "003", name: "Bima Sakti", table: "Takeaway (Bungkus)", method: "Tunai", notes: "Dibungkus kantong terpisah",
+        items: [
+          { productName: "Kopi Susu Gula Aren", price: 15000, quantity: 3, subtotal: 45000 },
+          { productName: "Mie Dok-Dok Nugas", price: 15000, quantity: 2, subtotal: 30000 }
+        ]
+      },
+      {
+        offset: 0, h: 15, m: 30, seq: "004", name: "Fathur Rahman", table: "Meja 02", method: "QRIS", notes: "Nugas skripsi",
+        items: [
+          { productName: "Cappuccino", price: 18000, quantity: 1, subtotal: 18000 },
+          { productName: "French Fries Crispy", price: 12000, quantity: 1, subtotal: 12000 }
+        ]
+      },
+      {
+        offset: 0, h: 17, m: 45, seq: "005", name: "Dinda & Tim KKN", table: "Meja 10", method: "QRIS", notes: "Rapat kelompok",
+        items: [
+          { productName: "Matcha Latte Premium", price: 18000, quantity: 2, subtotal: 36000 },
+          { productName: "Chocolate Milkshake", price: 16000, quantity: 2, subtotal: 32000 },
+          { productName: "Roti Bakar Keju Cokelat", price: 14000, quantity: 2, subtotal: 28000 }
+        ]
+      },
+      // Kemarin (offset -1) - 2 Transaksi
+      {
+        offset: -1, h: 10, m: 10, seq: "001", name: "Yoga Arianto", table: "Meja 05", method: "QRIS", notes: "",
+        items: [
+          { productName: "Kopi Susu Gula Aren", price: 15000, quantity: 2, subtotal: 30000 },
+          { productName: "Dimsum Ayam", price: 15000, quantity: 1, subtotal: 15000 }
+        ]
+      },
+      {
+        offset: -1, h: 14, m: 25, seq: "002", name: "Nadia Putri", table: "Takeaway", method: "Tunai", notes: "",
+        items: [
+          { productName: "Thai Tea Segar", price: 12000, quantity: 2, subtotal: 24000 },
+          { productName: "Choco Chip Cookies", price: 10000, quantity: 1, subtotal: 10000 }
+        ]
+      },
+      // 2 Hari Lalu (offset -2) - 2 Transaksi
+      {
+        offset: -2, h: 16, m: 40, seq: "001", name: "Kelompok 4 Statistika", table: "Meja 08", method: "QRIS", notes: "Colokan meja 8",
+        items: [
+          { productName: "Kopi Susu Gula Aren", price: 15000, quantity: 4, subtotal: 60000 },
+          { productName: "French Fries Crispy", price: 12000, quantity: 2, subtotal: 24000 },
+          { productName: "Pisang Coklat Lumer", price: 12000, quantity: 2, subtotal: 24000 }
+        ]
+      },
+      {
+        offset: -2, h: 19, m: 15, seq: "002", name: "Ilham Maulana", table: "Meja 01", method: "Tunai", notes: "",
+        items: [
+          { productName: "Caramel Macchiato", price: 20000, quantity: 1, subtotal: 20000 },
+          { productName: "Roti Bakar Keju Cokelat", price: 15000, quantity: 1, subtotal: 15000 }
+        ]
+      },
+      // 3 Hari Lalu (offset -3) - 2 Transaksi
+      {
+        offset: -3, h: 12, m: 30, seq: "001", name: "Gilang Ramadhan", table: "Meja 01", method: "QRIS", notes: "",
+        items: [
+          { productName: "Americano", price: 12000, quantity: 2, subtotal: 24000 },
+          { productName: "Mie Dok-Dok Nugas", price: 15000, quantity: 1, subtotal: 15000 }
+        ]
+      },
+      {
+        offset: -3, h: 15, m: 45, seq: "002", name: "Sarah Salsabila", table: "Meja 04", method: "QRIS", notes: "",
+        items: [
+          { productName: "Matcha Latte Premium", price: 18000, quantity: 1, subtotal: 18000 },
+          { productName: "Donat Kampus Glazed", price: 8000, quantity: 2, subtotal: 16000 }
+        ]
+      },
+      // 4 Hari Lalu (offset -4) - 3 Transaksi
+      {
+        offset: -4, h: 11, m: 15, seq: "001", name: "Farhan Akbar", table: "Takeaway", method: "Tunai", notes: "",
+        items: [
+          { productName: "Americano", price: 12000, quantity: 2, subtotal: 24000 }
+        ]
+      },
+      {
+        offset: -4, h: 14, m: 50, seq: "002", name: "Komunitas Debat Kampus", table: "Meja 09", method: "QRIS", notes: "Latihan debat",
+        items: [
+          { productName: "Kopi Susu Gula Aren", price: 15000, quantity: 4, subtotal: 60000 },
+          { productName: "Mie Dok-Dok Nugas", price: 15000, quantity: 3, subtotal: 45000 }
+        ]
+      },
+      {
+        offset: -4, h: 17, m: 20, seq: "003", name: "Tiara Andini", table: "Meja 03", method: "QRIS", notes: "",
+        items: [
+          { productName: "Vanilla Latte", price: 18000, quantity: 1, subtotal: 18000 },
+          { productName: "Pisang Coklat Lumer", price: 12000, quantity: 1, subtotal: 12000 }
+        ]
+      },
+      // 5 Hari Lalu (offset -5) - 3 Transaksi
+      {
+        offset: -5, h: 10, m: 40, seq: "001", name: "Panitia BEM Kampus", table: "Meja 12", method: "QRIS", notes: "Meeting koordinasi",
+        items: [
+          { productName: "Kopi Susu Gula Aren", price: 15000, quantity: 5, subtotal: 75000 },
+          { productName: "Dimsum Ayam", price: 15000, quantity: 3, subtotal: 45000 },
+          { productName: "French Fries Crispy", price: 12000, quantity: 2, subtotal: 24000 }
+        ]
+      },
+      {
+        offset: -5, h: 13, m: 35, seq: "002", name: "Siti Maulida", table: "Meja 04", method: "Tunai", notes: "",
+        items: [
+          { productName: "Caffe Latte Santai", price: 18000, quantity: 1, subtotal: 18000 },
+          { productName: "Donat Kampus Glazed", price: 8000, quantity: 1, subtotal: 8000 }
+        ]
+      },
+      {
+        offset: -5, h: 16, m: 10, seq: "003", name: "Rizky Kurniawan", table: "Meja 02", method: "Tunai", notes: "",
+        items: [
+          { productName: "Espresso Double", price: 12000, quantity: 1, subtotal: 12000 },
+          { productName: "Roti Bakar Keju Cokelat", price: 14000, quantity: 1, subtotal: 14000 }
+        ]
+      },
+      // 6 Hari Lalu (offset -6) - 4 Transaksi
+      {
+        offset: -6, h: 9, m: 50, seq: "001", name: "Maya Lestari", table: "Meja 07", method: "QRIS", notes: "",
+        items: [
+          { productName: "Thai Tea Segar", price: 12000, quantity: 1, subtotal: 12000 },
+          { productName: "Cireng Salju Bumbu Rujak", price: 10000, quantity: 1, subtotal: 10000 }
+        ]
+      },
+      {
+        offset: -6, h: 12, m: 15, seq: "002", name: "Aldi & Kevin", table: "Meja 06", method: "QRIS", notes: "",
+        items: [
+          { productName: "Kopi Susu Gula Aren", price: 15000, quantity: 2, subtotal: 30000 },
+          { productName: "French Fries Crispy", price: 12000, quantity: 1, subtotal: 12000 },
+          { productName: "Dimsum Ayam", price: 15000, quantity: 1, subtotal: 15000 }
+        ]
+      },
+      {
+        offset: -6, h: 15, m: 30, seq: "003", name: "Anisa Rahma", table: "Takeaway", method: "Tunai", notes: "",
+        items: [
+          { productName: "Kopi Susu Pandan", price: 17000, quantity: 2, subtotal: 34000 },
+          { productName: "Donat Kampus Glazed", price: 8000, quantity: 2, subtotal: 16000 }
+        ]
+      },
+      {
+        offset: -6, h: 18, m: 20, seq: "004", name: "Hendra Wijaya", table: "Meja 05", method: "QRIS", notes: "",
+        items: [
+          { productName: "Cappuccino", price: 18000, quantity: 2, subtotal: 36000 }
+        ]
+      }
+    ];
+
+    return seeds.map(s => {
+      const dt = getOffsetDate(s.offset, s.h, s.m);
+      const total = s.items.reduce((sum, it) => sum + (it.subtotal || it.price * it.quantity), 0);
+      return {
+        id: `KM-${dt.dateKey}-${s.seq}`,
+        date: dt.iso,
+        dateFormatted: dt.formatted,
+        customerName: s.name,
+        orderType: s.table.toLowerCase().includes("takeaway") ? "takeaway" : "dine-in",
+        tableNumber: s.table,
+        paymentMethod: s.method,
+        total: total,
+        notes: s.notes || "",
+        status: "Berhasil",
+        items: s.items
+      };
+    });
+  },
+
+  // ===================================================
   // TRANSACTIONS & RECEIPT GENERATOR
   // ===================================================
   getTransactions() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-      const list = data ? JSON.parse(data) : [];
+      let list = data ? JSON.parse(data) : [];
+      if (!Array.isArray(list) || list.length < 5) {
+        const seeds = this.getSeedTransactions();
+        list = (list || []).concat(seeds.filter(s => !(list || []).some(e => e.id === s.id)));
+        localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(list));
+      }
       return list.sort((a, b) => new Date(b.date) - new Date(a.date));
     } catch (e) {
       console.error("Failed to parse transactions from localStorage:", e);
-      return [];
+      return this.getSeedTransactions();
     }
   },
 

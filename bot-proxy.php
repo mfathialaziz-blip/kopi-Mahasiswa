@@ -36,8 +36,9 @@ $endpointMap = [
     'register'        => ['POST', '/api/notif-member'],
     'broadcast-promo' => ['POST', '/api/broadcast-promo'],
     'promo-berkala'   => ['POST', '/api/broadcast-promo'],
-    'members'         => ['GET',  '/api/members'],
-    'ai-chat'         => ['POST', '/api/ai-chat'],
+    'members'           => ['GET',  '/api/members'],
+    'ai-chat'           => ['POST', '/api/ai-chat'],
+    'analytics-summary' => ['GET',  '/api/analytics-summary'],
 ];
 
 if (!isset($endpointMap[$action])) {
@@ -52,6 +53,27 @@ $url = $BOT_BASE . $path;
 // Baca body dari request browser
 $rawBody = file_get_contents('php://input');
 $isPost  = ($method === 'POST');
+
+// Inject data sesi member aktif jika action = ai-chat
+if ($action === 'ai-chat') {
+    if (session_status() === PHP_SESSION_NONE) {
+        @session_start();
+    }
+    $decodedBody = json_decode($rawBody, true) ?: [];
+    if (empty($decodedBody['member']) && !empty($_SESSION['km_member_data'])) {
+        $decodedBody['member'] = $_SESSION['km_member_data'];
+    } elseif (empty($decodedBody['member']) && !empty($_COOKIE['km_member_data'])) {
+        $decodedBody['member'] = json_decode($_COOKIE['km_member_data'], true);
+    }
+    if (empty($decodedBody['name'])) {
+        if (!empty($_SESSION['km_auth_user'])) {
+            $decodedBody['name'] = $_SESSION['km_auth_user'];
+        } elseif (!empty($_COOKIE['km_member_name'])) {
+            $decodedBody['name'] = $_COOKIE['km_member_name'];
+        }
+    }
+    $rawBody = json_encode($decodedBody);
+}
 
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -71,6 +93,24 @@ curl_close($ch);
 
 // Bot tidak bisa dihubungi sama sekali (port 3000 mati)
 if ($curlErr && $httpCode === 0) {
+    // Fallback khusus untuk membaca data members.json jika bot sedang offline
+    if ($action === 'members') {
+        $membersFile = __DIR__ . '/members.json';
+        if (file_exists($membersFile)) {
+            $raw = file_get_contents($membersFile);
+            $membersData = json_decode($raw, true) ?: [];
+            http_response_code(200);
+            echo json_encode([
+                'status'    => 'success',
+                'success'   => true,
+                'total'     => count($membersData),
+                'data'      => $membersData,
+                'botOnline' => false
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+
     http_response_code(503);
     echo json_encode([
         'success'    => false,

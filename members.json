@@ -1,32 +1,82 @@
 [
-  {
-    "id": 1793183627863,
-    "name": "syahrul",
-    "campus": "STMIK IKMI CIREBON",
-    "phone": "6285795842205",
-    "cleanPhone": "6285795842205",
-    "password": "",
-    "registeredAt": "2026-10-28T10:33:47.850Z",
-    "status": "Aktif"
-  },
-  {
-    "id": 1793173726537,
-    "name": "faqih",
-    "campus": "ITB",
-    "phone": "6283156957399",
-    "cleanPhone": "6283156957399",
-    "password": "",
-    "registeredAt": "2026-10-28T07:48:46.532Z",
-    "status": "Aktif"
-  },
-  {
-    "id": 1793172838236,
-    "name": "aziz",
-    "campus": "STMIK IKMI CIREBON",
-    "phone": "6285173022407",
-    "cleanPhone": "6285173022407",
-    "password": "",
-    "registeredAt": "2026-10-28T07:33:58.232Z",
-    "status": "Aktif"
-  }
+    {
+        "id": 1793240259977,
+        "name": "Erlangga",
+        "campus": "binus",
+        "phone": "62817720476",
+        "cleanPhone": "62817720476",
+        "password": "",
+        "registeredAt": "2026-10-29T02:17:40.553Z",
+        "status": "Aktif"
+    },
+    {
+        "id": 1793239904064,
+        "name": "Yusuf",
+        "campus": "UI",
+        "phone": "6283891162778",
+        "cleanPhone": "6283891162778",
+        "password": "",
+        "registeredAt": "2026-10-29T02:11:44.058Z",
+        "status": "Aktif"
+    },
+    {
+        "id": 1793239796294,
+        "name": "abin",
+        "campus": "binus",
+        "phone": "62895402900025",
+        "cleanPhone": "62895402900025",
+        "password": "",
+        "registeredAt": "2026-10-29T02:09:56.292Z",
+        "status": "Aktif"
+    },
+    {
+        "id": 1793183627863,
+        "name": "syahrul",
+        "campus": "STMIK IKMI CIREBON",
+        "phone": "6285795842205",
+        "cleanPhone": "6285795842205",
+        "password": "",
+        "registeredAt": "2026-10-28T10:33:47.850Z",
+        "status": "Aktif"
+    },
+    {
+        "id": 1793173726537,
+        "name": "faqih",
+        "campus": "ITB",
+        "phone": "6283156957399",
+        "cleanPhone": "6283156957399",
+        "password": "",
+        "registeredAt": "2026-10-28T07:48:46.532Z",
+        "status": "Aktif"
+    },
+    {
+        "id": 1793172838236,
+        "name": "Test User Hardened",
+        "campus": "ITB",
+        "phone": "6285173022407",
+        "cleanPhone": "6285173022407",
+        "password": "123456",
+        "registeredAt": "2026-10-31T06:50:09.055Z",
+        "status": "Aktif"
+    },
+    {
+        "id": 1794458288546,
+        "name": "Julianda",
+        "campus": "ITB",
+        "phone": "6282114122927",
+        "cleanPhone": "6282114122927",
+        "password": "123456",
+        "registeredAt": "2026-11-12T04:38:08+00:00",
+        "status": "Aktif"
+    },
+    {
+        "id": 1794542513640,
+        "name": "Muhaz",
+        "campus": "UIN",
+        "phone": "6281318163981",
+        "cleanPhone": "6281318163981",
+        "password": "123456",
+        "registeredAt": "2026-11-13T04:01:53+00:00",
+        "status": "Aktif"
+    }
 ]

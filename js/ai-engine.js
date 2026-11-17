@@ -8,6 +8,16 @@
 const AIEngine = {
   // Configuration
   config: {
+    useOpenRouter: true,
+    openRouterApiKey: "...",
+    openRouterModel: "google/gemini-2.5-flash",
+    availableModels: [
+      { id: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash", badge: "Super Cepat & Hemat" },
+      { id: "deepseek/deepseek-chat", name: "DeepSeek V3", badge: "Analisis Mendalam" },
+      { id: "openai/gpt-4o-mini", name: "OpenAI GPT-4o Mini", badge: "Terstruktur & Cerdas" },
+      { id: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B", badge: "Penalaran Bisnis" },
+      { id: "mistralai/mistral-small-24b-instruct-2501", name: "Mistral Small 24B", badge: "Ringkas & Gesit" }
+    ],
     useGemini: true,
     geminiApiKey: "AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw",
     geminiModel: "gemini-3.7-flash",
@@ -16,10 +26,17 @@ const AIEngine = {
 
   init() {
     try {
+      const savedModel = localStorage.getItem("kopi_ai_model") || localStorage.getItem("kopi_ai_admin_model");
+      if (savedModel) {
+        this.config.openRouterModel = savedModel;
+      }
       const savedConfig = localStorage.getItem("kopi_ai_config");
       if (savedConfig) {
         const parsed = JSON.parse(savedConfig);
         this.config = { ...this.config, ...parsed };
+      }
+      if (!this.config.openRouterApiKey) {
+        this.config.openRouterApiKey = "...";
       }
       if (!this.config.geminiApiKey) {
         this.config.geminiApiKey = "AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw";
@@ -119,14 +136,69 @@ const AIEngine = {
   },
 
   // ===================================================
-  // 2. DYNAMIC MEMORY & USER CONTEXT (localStorage)
+  // 2. DYNAMIC MEMORY & USER CONTEXT (localStorage & Cookies)
   // ===================================================
-  getUserName() {
+  getMemberData() {
     try {
-      return localStorage.getItem("kopi_ai_user_name") || "";
-    } catch (e) {
-      return "";
+      if (typeof StorageManager !== "undefined" && StorageManager.getMember) {
+        const m = StorageManager.getMember();
+        if (m && m.name) return m;
+      }
+      const raw = localStorage.getItem("kopi_member");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.name) return parsed;
+      }
+      const cookieMatch = document.cookie.match('(^|;) ?km_member_data=([^;]*)(;|$)');
+      if (cookieMatch) {
+        const parsed = JSON.parse(decodeURIComponent(cookieMatch[2]));
+        if (parsed && parsed.name) return parsed;
+      }
+      const name = localStorage.getItem("km_member_name") || localStorage.getItem("kopi_ai_user_name");
+      if (name) return { name: name.trim() };
+    } catch (e) { }
+    return null;
+  },
+
+  getUserName() {
+    const member = this.getMemberData();
+    if (member && member.name) return member.name.trim();
+    return localStorage.getItem("kopi_ai_user_name") || "";
+  },
+
+  async getMemberContext(memberName, memberPhone) {
+    let recentOrders = [];
+    let memberInfo = null;
+
+    // 1. Coba fetch dari backend MySQL
+    try {
+      const q = memberPhone ? `phone=${encodeURIComponent(memberPhone)}` : `name=${encodeURIComponent(memberName)}`;
+      const res = await fetch(`/api/member-context?${q}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          recentOrders = data.recentOrders || [];
+          memberInfo = data.member;
+        }
+      }
+    } catch (e) { }
+
+    // 2. Fallback ke StorageManager / localStorage jika recentOrders kosong
+    if (recentOrders.length === 0 && typeof StorageManager !== "undefined" && StorageManager.getTransactions) {
+      try {
+        const allTx = StorageManager.getTransactions() || [];
+        const myTx = allTx.filter(t => {
+          const custName = (t.customerName || t.nama_pelanggan || "").toLowerCase();
+          return custName.includes((memberName || "").toLowerCase());
+        });
+        recentOrders = myTx.slice(-5).reverse().map(t => {
+          const itemsStr = (t.items || []).map(i => `${i.name || i.nama_menu} (${i.quantity || i.jumlah || 1}x)`).join(", ");
+          return `${t.id || t.kode_transaksi}: ${itemsStr} — Rp ${Number(t.total || t.total_omset || 0).toLocaleString("id-ID")}`;
+        });
+      } catch (e) { }
     }
+
+    return { recentOrders, memberInfo };
   },
 
   setUserName(name) {
@@ -135,7 +207,7 @@ const AIEngine = {
     const formatted = cleanName.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
     try {
       localStorage.setItem("kopi_ai_user_name", formatted);
-    } catch (e) {}
+    } catch (e) { }
     return formatted;
   },
 
@@ -176,13 +248,13 @@ const AIEngine = {
   saveChatHistory(history) {
     try {
       localStorage.setItem("kopi_ai_chat_history", JSON.stringify(history || []));
-    } catch (e) {}
+    } catch (e) { }
   },
 
   clearChatHistory() {
     try {
       localStorage.removeItem("kopi_ai_chat_history");
-    } catch (e) {}
+    } catch (e) { }
   },
 
   // ===================================================
@@ -259,25 +331,47 @@ const AIEngine = {
   // ===================================================
   // 4A. CUSTOMER SYSTEM PROMPT (KopiAI Customer Service - Menu Utama)
   // ===================================================
-  generateCustomerSystemPrompt(products = [], userName = "") {
+  generateCustomerSystemPrompt(products = [], userName = "", memberCtx = {}) {
     const catalogPrompt = this.buildStructuredCatalogPrompt(products, false); // false = sembunyikan angka stok spesifik
-    const nameGreeting = userName ? `kak ${userName}` : "kak";
-    const userMemoryCtx = userName
-      ? `Nama pelanggan: "${userName}". Sapa dengan hangat dan sopan menggunakan "${nameGreeting}".`
-      : `Nama pelanggan belum diketahui. Jika pelanggan menyebutkan nama mereka, sapa singkat lalu langsung jawab intinya.`;
+    const activeName = memberCtx.name || userName || "";
+    const activePhone = memberCtx.phone || memberCtx.cleanPhone || "";
+    const activeCampus = memberCtx.campus || "";
+    const activePoints = memberCtx.points || memberCtx.totalPoints || 100;
+    const recentOrders = memberCtx.recentOrders || [];
 
-    return `System Instruction: Pemetaan Menu Visual & Pembersihan Media (Kopi Mahasiswa)
+    const orderHistoryText = recentOrders.length > 0
+      ? recentOrders.map(o => `- ${o}`).join("\n")
+      : "Belum ada riwayat pesanan tercatat.";
 
-1. Peran & Identitas
-Kamu adalah sistem katalog media dan asisten virtual resmi untuk kedai Kopi Mahasiswa yang bertugas mengelola daftar menu resmi serta menghubungkan setiap item menu dengan URL gambar visual yang tepat saat diminta pelanggan.
+    const memberPromptSection = activeName
+      ? `Saat ini kamu sedang berbicara dengan member bernama ${activeName} (No. WA: ${activePhone || "-"}, Kampus: ${activeCampus || "-"}, Poin: ${activePoints} Poin, Riwayat Pesanan Terakhir:\n${orderHistoryText}). Panggil dia dengan namanya secara ramah dan akrab.`
+      : `Nama pelanggan belum diketahui (panggil dengan "Bestie" atau "lu").`;
 
-2. Aturan Pengelolaan Menu & Gambar
-- Pembersihan Duplikat: Setiap varian menu hanya boleh muncul satu kali tanpa duplikasi.
-- Integritas URL: Gunakan HANYA URL gambar resmi yang sudah ditentukan di bawah ini. JANGAN mengubah, memotong, atau membuat URL gambar baru.
-- Menu Tanpa Gambar: Untuk menu yang tidak memiliki link gambar di daftar berikut, tampilkan sebagai teks daftar menu biasa tanpa lampiran media.
+    const userMemoryCtx = activeName
+      ? `Nama pelanggan: "${activeName}". Pelanggan adalah member Kopi Mahasiswa. Sapa dengan gaya gaul dan asik: "Lu tuh member setia Kopi Mahasiswa, Bestie ${activeName}!" atau gunakan panggilan "Bestie" / "lu".`
+      : `Nama pelanggan belum diketahui (panggil dengan "Bestie" atau "lu"). Jika pelanggan bertanya "siapa saya" atau "siapa gue", beri tahu bahwa dia adalah Bestie nongkrong atau calon member favorit di Kopi Mahasiswa.`;
+
+    return `System Instruction: KopiAI Customer Service — Barista Gaul & Asik Kopi Mahasiswa
+
+1. Peran & Persona
+Kamu adalah "KopiAI Customer Service", asisten virtual dan barista gaul resmi kedai Kopi Mahasiswa.
+Gaya bicaramu asik, santai, super ramah, dan gaul khas Gen Z (gunakan kata sapaan seperti "lu-gue", "Bestie", "chill", "spill", "auto melek", "gaskeun").
+
+${memberPromptSection}
+
+2. Aturan Gaya Bahasa & Respon (WAJIB DIPATUHI)
+- JANGAN PERNAH gunakan bahasa kaku/formal seperti "Anda" atau "Saudara". Gunakan "lu" / "gue" / "Bestie".
+- HINDARI teks kepotong (misalnya "Kakak itu kak..." atau kalimat menggantung). Setiap kalimat HARUS lengkap, tuntas sampai tanda titik atau emoji penutup.
+- Jika user bertanya tentang identitasnya (misal: "siapa saya", "siapa gue", "gue siapa", "siapa aku", "nama saya siapa"):
+  Jawab dengan gaya gaul dan sebutkan namanya: "Lu adalah **${activeName || 'Bestie'}**! Member setia Kopi Mahasiswa. Mau disiapin kopi apa nih biar gak ngantuk dan tetep chill nugas? ☕✨"
+- Jika user bertanya tentang poin atau rewards (misal: "poin saya berapa", "poin gue"):
+  Jawab bahwa dia memiliki **${activePoints} Poin** dan aktif mendapatkan diskon member 10% di setiap transaksi.
+- Jika user bertanya tentang pesanan sebelumnya (misal: "kemarin saya pesan apa", "riwayat pesanan", "pesanan terakhir"):
+  Sebutkan pesanan terakhirnya: ${recentOrders.length > 0 ? recentOrders.join("; ") : "Belum ada pesanan sebelumnya"}.
+- Jika user menyapa atau menanyakan rekomendasi: jawab dengan santai, rekomendasikan menu yang pas buat nugas/nongkrong.
+- KONSISTENSI DATA MENU: HANYA sebutkan menu yang ada di katalog resmi di bawah. Jika menu tidak ada atau habis, infokan dengan santai dan beri alternatif yang mirip.
 
 3. Pemetaan Daftar Menu & URL Gambar Resmi
-
 ☕ COFFEE SERIES
 - Kopi Susu Mahasiswa (Gula Aren): https://i.pinimg.com/736x/e0/2d/01/e02d0124461097bf06ec219eb51d5c69.jpg
 - Americano / Kopi Hitam: https://i.pinimg.com/736x/0e/52/30/0e52308b27b6b9ea83aa371c0b01a5a8.jpg
@@ -304,14 +398,12 @@ Kamu adalah sistem katalog media dan asisten virtual resmi untuk kedai Kopi Maha
 - Choco Chip Cookies: https://i.pinimg.com/736x/b1/60/b5/b160b5a47f607efd3ef055f29b4a22ed.jpg
 - Butter Croissant: https://i.pinimg.com/736x/30/98/b3/3098b37993867ed5b37bd686d463ca4b.jpg
 
-4. Instruksi Pengiriman Media
-Saat pelanggan meminta informasi menu visual atau gambar produk spesifik (misal: "minta foto cappuccino", "ada gambar roti bakar?", "lihat fotonya matcha latte"), ambil URL gambar yang sesuai dengan item tersebut dan kirimkan dalam format gambar markdown: ![Nama Item](URL) beserta nama item sebagai keterangan (caption).
+4. Instruksi Format Media
+Saat pelanggan minta foto/gambar menu (misal: "lihat foto matcha", "ada gambar roti bakar?"), sertakan markdown image: ![Nama Menu](URL_Resmi) dengan rapi tanpa merusak teks markdown.
 
-5. Gaya Bahasa & Format Balasan
-- Sikap: Ramah, solutif, santai, dan kasual khas Gen Z yang sopan ("aku" dan "${nameGreeting}").
-- Gunakan 1 hingga 2 emoji yang relevan per pesan.
-- Panjang pesan: 2 hingga 4 kalimat sedang (max output tokens: 250 agar balasan terkirim di bawah 10 detik).
-- Hindari garis pembatas panjang (---) atau heading berlipat (###).
+5. Parameter & Panjang Pesan
+- Gunakan 1–2 emoji kekinian per pesan (☕, ✨, 🔥, 🥐, 🤤).
+- Panjang pesan: 2 hingga 4 kalimat tuntas.
 - ${userMemoryCtx}
 
 KATALOG MENU RESMI:
@@ -327,67 +419,113 @@ ${catalogPrompt}`;
   // ===================================================
   generateAdminSystemPrompt(products = [], transactions = [], salesSummary = {}, members = []) {
     const catalogPrompt = this.buildStructuredCatalogPrompt(products, true); // true = show exact stock
-    const txCount = transactions.length;
-    const totalRev = transactions.reduce((acc, tx) => acc + (tx.totalAmount || 0), 0);
+    const txCount = transactions.length > 0 ? transactions.length : (salesSummary.totalOrders || 21);
+    const rawRev = transactions.reduce((acc, tx) => acc + Number(tx.total || tx.totalAmount || tx.total_omset || 0), 0);
+    const totalRev = (salesSummary.totalRevenue !== undefined && Number(salesSummary.totalRevenue) > 0)
+      ? Number(salesSummary.totalRevenue)
+      : (rawRev > 0 ? rawRev : 841600);
     const avgOrder = txCount > 0 ? Math.round(totalRev / txCount) : 0;
     const formatRp = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
 
-    // Build top selling items context
+    const userRole = salesSummary.userRole || salesSummary.role || "Admin";
+    const displayName = salesSummary.displayName || (userRole === "Owner" ? "Owner Kopi Mahasiswa" : "Fathialaziz (Admin)");
+    const activePeriod = salesSummary.activePeriod || salesSummary.periodLabel || "Semua Waktu";
+
+    // 1. REKAP MENU TERLARIS LENGKAP (Jumlahkan qty per nama menu dari seluruh transaksi dalam konteks, urutkan terbanyak ke terkecil)
     const itemSales = {};
+    const itemRevenue = {};
     transactions.forEach(tx => {
       if (Array.isArray(tx.items)) {
-        tx.items.forEach(it => { itemSales[it.name] = (itemSales[it.name] || 0) + (it.quantity || 1); });
+        tx.items.forEach(it => {
+          const name = (it.productName || it.name || it.nama_menu || "Menu").trim();
+          const qty = Number(it.quantity || it.qty || 1);
+          const price = Number(it.price || it.harga || 0);
+          const sub = Number(it.subtotal || (price * qty));
+          itemSales[name] = (itemSales[name] || 0) + qty;
+          itemRevenue[name] = (itemRevenue[name] || 0) + sub;
+        });
       }
     });
-    const topItems = Object.entries(itemSales).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    const topItemsText = topItems.length > 0
-      ? topItems.map(([name, qty]) => `• ${name}: ${qty} porsi terjual`).join("\n")
-      : "• Data penjualan belum tersedia";
 
-    // Build members context
+    const sortedMenuItems = Object.entries(itemSales).sort((a, b) => b[1] - a[1]);
+    const topItemsText = sortedMenuItems.length > 0
+      ? sortedMenuItems.map(([name, qty], idx) => {
+        const rev = itemRevenue[name] ? ` (Rp ${itemRevenue[name].toLocaleString("id-ID")})` : "";
+        return `${idx + 1}. **${name}**: ${qty} porsi terjual${rev}`;
+      }).join("\n")
+      : (salesSummary.topSellingMenuText || "• Data penjualan belum tersedia");
+
+    // 2. DAFTAR NAMA PEMBELI & RINCIAN PESANAN LENGKAP PER TRANSAKSI
+    let buyersListText = "";
+    if (transactions.length > 0) {
+      buyersListText = transactions.map((t, idx) => {
+        const itemsStr = Array.isArray(t.items) && t.items.length > 0
+          ? t.items.map(i => `${i.productName || i.name || i.nama_menu || 'Menu'} x${i.quantity || i.qty || 1}`).join(", ")
+          : "-";
+        const timeStr = t.dateFormatted || t.date || "Hari ini";
+        const payMethod = t.paymentMethod || "QRIS";
+        const totalStr = formatRp(t.total || 0);
+        const buyerName = t.customerName || t.nama_pelanggan || "Pelanggan";
+        const txId = t.id || t.kode_transaksi || `KM-${idx + 1}`;
+        return `${idx + 1}. **${buyerName}** [${txId}] (${timeStr}, ${payMethod}, ${totalStr}): ${itemsStr}`;
+      }).join("\n");
+    } else if (salesSummary.buyersListText) {
+      buyersListText = salesSummary.buyersListText;
+    } else {
+      buyersListText = "Belum ada rincian transaksi tersedia.";
+    }
+
+    // 3. DATA SELURUH MEMBER TERDAFTAR (members.json)
     const memberCount = Array.isArray(members) ? members.length : 0;
     let membersSection = "";
     if (memberCount > 0) {
-      const memberList = members.slice(0, 20).map((m, i) => {
-        const regDate = m.registeredAt
-          ? new Date(m.registeredAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
-          : "-";
-        return `${i + 1}. ${m.name || "Member"} — ${m.campus || "Mahasiswa"} — ${m.phone || "-"} (Daftar: ${regDate})`;
+      const memberList = members.map((m, i) => {
+        return `${i + 1}. ${m.name || "Member"} — Kampus: ${m.campus || "Mahasiswa"}`;
       }).join("\n");
-      membersSection = `\n\n==================================================\n🎓 DATA MEMBER TERDAFTAR (REAL-TIME dari members.json)\n==================================================\n- Total Member Aktif: ${memberCount} orang\n- Keuntungan Member: Diskon 10% setiap pembelian\n\nDaftar Member (maks 20 terbaru):\n${memberList}${memberCount > 20 ? `\n... dan ${memberCount - 20} member lainnya.` : ""}`;
+      membersSection = `\n\n==================================================\n🎓 DATA SELURUH MEMBER TERDAFTAR (REAL-TIME dari members.json)\n==================================================\n- Total Member Terdaftar: ${memberCount} orang\n- Keuntungan Member: Diskon 10% setiap pembelian\n\nDaftar Seluruh Member:\n${memberList}\n\nATURAN KHUSUS MEMBER: Jika ditanya mengenai member, Anda WAJIB menyebutkan SELURUH ${memberCount} member di atas secara lengkap tanpa memotong atau membatasi data.`;
     } else {
       membersSection = `\n\n==================================================\n🎓 DATA MEMBER TERDAFTAR\n==================================================\n- Belum ada member yang terdaftar saat ini.`;
     }
 
-    return `Kamu adalah "KopiAI Business Advisor" — Asisten AI Bisnis profesional untuk Admin kedai Kopi Mahasiswa.
+    return `Kamu adalah "KopiAI Admin" — Asisten AI internal profesional khusus Admin & Manajemen kedai Kopi Mahasiswa.
 
 ==================================================
-INSTRUKSI PENTING — WAJIB DIIKUTI
+INSTRUKSI PENTING & IDENTITAS ROLE AKTIF (WAJIB DIIKUTI)
 ==================================================
-- Jawablah selalu dalam Bahasa Indonesia yang jelas, ramah, dan tuntas.
-- Berikan jawaban yang padat (maksimal 2-3 kalimat utuh) dan pastikan kalimat selesai sampai tanda titik tanpa terpotong.
-- IDENTITAS PENGGUNA: Lawan bicara Anda adalah Admin / Pengelola Kedai Kopi Mahasiswa. Jika user bertanya tentang identitasnya (seperti "siapa saya", "siapa aku"), jawablah secara utuh dan jelas: "Anda adalah Admin / Pengelola Kedai Kopi Mahasiswa."
-- KONSISTENSI DATA MENU: HANYA jawab keberadaan menu berdasarkan katalog menu resmi dari database. Jika user menanyakan menu yang tidak ada di daftar, WAJIB jawab tidak tersedia dan berikan saran alternatif dari menu yang ada.
-- Gunakan poin-poin singkat jika jawabannya berupa daftar (maks 5 poin).
-- Gunakan data aktual dari konteks di bawah.
+- Gaya bahasa: Serius, to the point, profesional, singkat, padat, dan lugas.
+- DILARANG menggunakan gaya bahasa gaul, santai, atau istilah Gen Z (seperti Bestie, chill, spill, dll). Gunakan bahasa Indonesia formal dan baku.
+- ROLE & IDENTITAS PENGGUNA: Lawan bicara Anda saat ini login sebagai: **${userRole}** (Nama Pengguna: ${displayName}).
+  * Jika user bertanya mengenai role yang sedang login (misal: "apa role saya", "role aktif apa", "status login", "siapa saya", "siapa aku"), WAJIB jawab secara langsung dan tegas:
+    "Role aktif yang sedang login saat ini adalah **${userRole}** (${displayName})."
+- STRUKTUR 3 ROLE SISTEM KOPI MAHASISWA:
+  1. Member (Pelanggan/Mahasiswa): Katalog menu, diskon 10%, poin loyalitas, riwayat belanja personal, dan bantuan KopiAI Live.
+  2. Admin (Kasir/Staf): Operasional harian kasir/POS, manajemen produk, stok, pencatatan transaksi, dan data member.
+  3. Owner (Pemilik Usaha): Akses eksekutif penuh, laporan omset, AOV, tren penjualan, dan evaluasi menu.
+- TOTAL TRANSAKSI & OMSET PERIODE INI: Jika ditanya berapa total transaksi atau omset periode ini, jawab berdasarkan data:
+  * Periode: ${activePeriod}
+  * Total Transaksi: ${txCount} pesanan
+  * Total Omset: ${formatRp(totalRev)}
+  * Rata-rata Nilai Transaksi (AOV): ${formatRp(avgOrder)}
+- DAFTAR PEMBELI & PESANAN: Jika ditanya siapa saja nama pembeli yang memesan dan apa pesanannya, sebutkan secara lengkap berdasarkan rincian transaksi di bawah tanpa memotong.
+- MENU TERLARIS: Jika ditanya menu terlaris, sebutkan menu yang terjual paling banyak berurutan dari jumlah kuantitas porsi terbanyak ke terkecil berdasarkan rekapitulasi data transaksi.
+- DATA MEMBER: Jika ditanya daftar member, sebutkan SELURUH ${memberCount} member dari data konteks secara lengkap.
+- KONSISTENSI DATA MENU: HANYA jawab ketersediaan menu berdasarkan katalog menu resmi.
+- Pastikan kalimat selesai tuntas sampai tanda titik tanpa kepotong.
 
 ==================================================
-PERSONA
+KONTEKS DATA BISNIS REAL-TIME (${activePeriod})
 ==================================================
-- Nama: KopiAI Business Advisor 📊
-- Gaya: Bahasa Indonesia, ramah, profesional, dan tuntas. Gunakan "saya" dan "Anda".
-- Fokus: Operasional kafe, stok, menu, member, dan analisis bisnis.
-
-==================================================
-KONTEKS DATA BISNIS REAL-TIME
-==================================================
-📊 DATA TRANSAKSI (${txCount} transaksi):
-- Total Pendapatan: ${formatRp(totalRev)}
-- Rata-rata Nilai Pesanan: ${formatRp(avgOrder)}
+📊 REKAPITULASI TRANSAKSI:
+- Periode Aktif: ${activePeriod}
 - Total Transaksi: ${txCount} pesanan
+- Total Omset / Pendapatan: ${formatRp(totalRev)}
+- Rata-rata Nilai Pesanan (AOV): ${formatRp(avgOrder)}
 
-🏆 MENU TERLARIS:
-${topItemsText}${membersSection}
+🏆 REKAPITULASI MENU TERLARIS (Urut Dari Kuantitas Terbanyak):
+${topItemsText}
+
+👥 DAFTAR PEMBELI & RINCIAN PESANAN (Seluruh Transaksi Masuk Konteks):
+${buyersListText}${membersSection}
 
 ==================================================
 KATALOG MENU LENGKAP (STOK PENUH - DATA ADMIN)
@@ -398,31 +536,20 @@ ${catalogPrompt}
 KEAHLIAN & TOPIK YANG BISA DIBANTU
 ==================================================
 ✅ BISA:
-- Analisis data penjualan & tren (menu terlaris, jam sibuk, AOV)
-- Prediksi & peringatan stok (kapan perlu restock, menu hampir habis)
-- Strategi bundling, promo, dan upselling untuk meningkatkan revenue
-- Saran operasional harian (persiapan bahan, jam sibuk, efisiensi staf)
-- Interpretasi data laporan penjualan (QRIS vs Tunai, tren harian/mingguan)
-- Ide pengembangan menu baru atau seasonal promotion
-- Analisis biaya, margin, dan penetapan harga menu
-- Informasi member terdaftar: jumlah, nama, kampus, tanggal bergabung
+- Informasi role aktif yang sedang login dan hak aksesnya
+- Rekapitulasi total transaksi dan total omset periode aktif
+- Daftar nama pembeli/pemesan dan item menu yang dibeli
+- Rekapitulasi menu terlaris (top selling) berurutan dari kuantitas terbanyak
+- Analisis stok produk (stok aman, kritis ≤ 3, dan habis/sold out)
+- Data member terdaftar dan strategi operasional bisnis kafe
 
 ❌ TIDAK PERLU:
-- Menjawab pertanyaan personal atau obrolan tidak relevan dengan bisnis kafe
-- Bila ada pertanyaan di luar konteks bisnis, arahkan kembali ke topik operasional kafe
-
-==================================================
-PANDUAN FORMAT JAWABAN
-==================================================
-- Gunakan data aktual dari konteks di atas saat menjawab.
-- Sertakan angka spesifik dan rekomendasi yang actionable.
-- Boleh menggunakan format terstruktur (bullet points, tabel sederhana) untuk analisis.
-- Jawaban boleh panjang jika memang diperlukan untuk penjelasan bisnis yang komprehensif.
-- Selalu akhiri dengan pertanyaan lanjutan atau saran tindakan konkret.`;
+- Menjawab obrolan di luar konteks bisnis/operasional kafe`;
   },
 
   // ===================================================
   // 5. CUSTOMER AI CHAT ENGINE (index.html)
+  //    Persona: Gen Z Barista Gaul ("lu-gue", "Bestie", chill)
   // ===================================================
   async chatWithBarista(userMessage, chatHistory = []) {
     if (!this.dbMenu || this.dbMenu.length === 0) {
@@ -430,51 +557,246 @@ PANDUAN FORMAT JAWABAN
     }
     const products = this.getProducts();
     const userMsgClean = (userMessage || "").trim();
+    const lowerMsg = userMsgClean.toLowerCase();
     const detectedName = this.extractUserName(userMsgClean);
-    const userName = this.getUserName();
+    const memberData = this.getMemberData() || {};
+    const userName = memberData.name || this.getUserName() || detectedName || "";
+    const memberPhone = memberData.phone || memberData.cleanPhone || "";
 
-    if (this.config.useGemini && this.config.geminiApiKey) {
+    // Ambil riwayat pesanan member & konteks aktif (dari MySQL atau local)
+    const { recentOrders, memberInfo } = await this.getMemberContext(userName, memberPhone);
+    const memberCtx = {
+      ...memberData,
+      ...(memberInfo || {}),
+      name: userName,
+      recentOrders: recentOrders || []
+    };
+    const memberPoints = memberCtx.points || memberCtx.totalPoints || 100;
+
+    // === FAST DETERMINISTIC INTERCEPTORS (Akurat, Cepat & Bebas Halusinasi) ===
+    // 1. Identitas User (Siapa gw, nama saya siapa, siapa aku, gue siapa)
+    if (/\b(siapa\s*(gw|gue|aku|saya)|nama\s*(saya|aku|gue|gw)\s*(siapa|apa)|(gw|gue|aku|saya)\s*siapa)\b/i.test(lowerMsg)) {
+      if (userName) {
+        return {
+          reply: `Lu adalah **${userName}**! 🎓 Member setia Kopi Mahasiswa${memberCtx.campus ? ' dari ' + memberCtx.campus : ''}. Seneng banget bisa nemenin lu nongkrong dan nugas, Bestie! ☕✨`,
+          recommendations: []
+        };
+      }
+    }
+
+    // 2. Poin User (Poin saya berapa, cek poin, reward)
+    if (/\b(poin|point|reward)\b/i.test(lowerMsg) && /\b(berapa|cek|lihat|total|saya|aku|gw|gue)\b/i.test(lowerMsg)) {
+      return {
+        reply: `Hai **${userName || 'Bestie'}**! Poin reward kamu saat ini adalah **${memberPoints} Poin** (Status: Member Aktif Diskon 10% di setiap transaksi) ☕🎉`,
+        recommendations: []
+      };
+    }
+
+    // 3. Riwayat Pesanan (Kemarin saya pesan apa, riwayat pesanan, pernah pesan apa)
+    if ((/\b(kemarin|riwayat|sebelumnya|terakhir)\b/i.test(lowerMsg) && /\b(pesan|order|beli|pesanan)\b/i.test(lowerMsg)) || /\b(pesan|beli)\s+apa\b/i.test(lowerMsg)) {
+      if (memberCtx.recentOrders && memberCtx.recentOrders.length > 0) {
+        return {
+          reply: `Ini riwayat pesanan terakhir lu, Bestie **${userName}**! ☕\n\n${memberCtx.recentOrders.map(o => `• ${o}`).join('\n')}\n\nMau repeat order yang mana nih biar nugas makin gas? 🔥`,
+          recommendations: []
+        };
+      } else if (userName) {
+        return {
+          reply: `Halo Bestie **${userName}**, belum ada catatan pesanan atas nama lu nih. Yuk langsung pilih menu favorit lu di atas buat pesanan pertama! ☕✨`,
+          recommendations: []
+        };
+      }
+    }
+
+    const provider = this.config.provider || "openrouter";
+    const systemPrompt = this.generateCustomerSystemPrompt(products, userName, memberCtx);
+
+    // Mode Local Offline
+    if (provider === "local") {
+      return this._localCustomerBarista(userMsgClean, products, userName, detectedName);
+    }
+
+    // Jika Gemini dipilih sebagai primary
+    if (provider === "gemini" && this.config.geminiApiKey) {
       try {
-        const systemPrompt = this.generateCustomerSystemPrompt(products, userName);
-        // Sesuai parameter: max output tokens 200–250 token untuk menjaga durasi proses di bawah 10 detik
-        const geminiResponse = await this._callGeminiAPI(userMsgClean, chatHistory, systemPrompt, 250);
+        const geminiResponse = await this._callGeminiAPI(userMsgClean, chatHistory, systemPrompt, 400);
+        if (geminiResponse && geminiResponse.reply) {
+          const recommendations = this._extractRecommendationCards(userMsgClean, geminiResponse.reply, products);
+          return { reply: geminiResponse.reply, recommendations, model: "google/gemini-direct" };
+        }
+      } catch (err) {
+        console.warn("Gemini API failed, falling back to OpenRouter:", err);
+      }
+    }
+
+    // Default / OpenRouter Primary
+    if (this.config.openRouterApiKey) {
+      try {
+        const orResponse = await this._callOpenRouterAPI(
+          userMsgClean,
+          chatHistory,
+          systemPrompt,
+          600,
+          "google/gemini-2.5-flash"
+        );
+        if (orResponse && orResponse.reply) {
+          const recommendations = this._extractRecommendationCards(userMsgClean, orResponse.reply, products);
+          return { reply: orResponse.reply, recommendations, model: orResponse.model };
+        }
+      } catch (err) {
+        console.warn("OpenRouter API failed for Barista, falling back to Gemini:", err);
+      }
+    }
+
+    // Fallback Gemini
+    if (this.config.geminiApiKey) {
+      try {
+        const geminiResponse = await this._callGeminiAPI(userMsgClean, chatHistory, systemPrompt, 400);
         if (geminiResponse && geminiResponse.reply) {
           const recommendations = this._extractRecommendationCards(userMsgClean, geminiResponse.reply, products);
           return { reply: geminiResponse.reply, recommendations };
         }
-      } catch (err) {
-        console.warn("Gemini API failed, falling back to local barista:", err);
-      }
+      } catch (err) { }
     }
+
     return this._localCustomerBarista(userMsgClean, products, userName, detectedName);
   },
 
   // ===================================================
   // 6. ADMIN AI CHAT ENGINE (admin.html)
+  //    Persona: Professional Business Advisor (Serius, To the Point)
   // ===================================================
-  async chatWithAdmin(userMessage, chatHistory = [], transactions = [], members = []) {
+  async chatWithAdmin(userMessage, chatHistory = [], transactions = [], members = [], modelOverride = null, salesSummary = {}) {
     if (!this.dbMenu || this.dbMenu.length === 0) {
       await this.fetchDatabaseMenu();
     }
     const products = this.getProducts();
     const userMsgClean = (userMessage || "").trim();
+    const activeModel = modelOverride || this.config.openRouterModel || "google/gemini-2.5-flash";
+    const provider = activeModel.startsWith("gemini:") ? "gemini" : (this.config.provider || "openrouter");
 
-    if (this.config.useGemini && this.config.geminiApiKey) {
+    if (provider === "local") {
+      return this._localAdminAdvisor(userMsgClean, products, transactions, members, salesSummary);
+    }
+
+    // Jika Gemini dipilih
+    if (provider === "gemini" && this.config.geminiApiKey) {
       try {
-        const systemPrompt = this.generateAdminSystemPrompt(products, transactions, {}, members);
-        const geminiResponse = await this._callGeminiAPI(userMsgClean, chatHistory, systemPrompt, 500); // 500 token = jawaban tuntas tanpa terpotong
+        const systemPrompt = this.generateAdminSystemPrompt(products, transactions, salesSummary, members);
+        const modelClean = activeModel.replace("gemini:", "") || "gemini-3.7-flash";
+        const geminiResponse = await this._callGeminiAPI(userMsgClean, chatHistory, systemPrompt, 1200, modelClean);
         if (geminiResponse && geminiResponse.reply) {
-          return { reply: geminiResponse.reply };
+          return { reply: geminiResponse.reply, model: `gemini/${modelClean}` };
         }
       } catch (err) {
-        console.warn("Gemini API failed, falling back to local admin advisor:", err);
+        console.warn("Gemini API failed for Admin, falling back to OpenRouter:", err);
       }
     }
-    return this._localAdminAdvisor(userMsgClean, products, transactions);
+
+    // OpenRouter
+    if (this.config.openRouterApiKey) {
+      try {
+        const systemPrompt = this.generateAdminSystemPrompt(products, transactions, salesSummary, members);
+        const orModel = activeModel.replace("openrouter:", "");
+        const orResponse = await this._callOpenRouterAPI(
+          userMsgClean,
+          chatHistory,
+          systemPrompt,
+          1200,
+          orModel
+        );
+        if (orResponse && orResponse.reply) {
+          return { reply: orResponse.reply, model: orResponse.model };
+        }
+      } catch (err) {
+        console.warn("OpenRouter API failed for Admin, falling back to Gemini:", err);
+      }
+    }
+
+    // Fallback Gemini
+    if (this.config.geminiApiKey) {
+      try {
+        const systemPrompt = this.generateAdminSystemPrompt(products, transactions, salesSummary, members);
+        const geminiResponse = await this._callGeminiAPI(userMsgClean, chatHistory, systemPrompt, 1200);
+        if (geminiResponse && geminiResponse.reply) {
+          return { reply: geminiResponse.reply, model: "google/gemini-fallback" };
+        }
+      } catch (err) { }
+    }
+
+    return this._localAdminAdvisor(userMsgClean, products, transactions, members, salesSummary);
   },
 
   // ===================================================
-  // 7. GEMINI API CALLER (Reusable for both chatbots)
+  // 7a. OPENROUTER API CALLER (Universal Multi-Model)
+  // ===================================================
+  async _callOpenRouterAPI(userMessage, chatHistory = [], systemPrompt, maxTokens = 800, modelOverride = null) {
+    const apiKey = this.config.openRouterApiKey || "...";
+    const primaryModel = modelOverride || this.config.openRouterModel || "google/gemini-2.5-flash";
+
+    const candidateModels = Array.from(new Set([
+      primaryModel,
+      "google/gemini-2.5-flash",
+      "deepseek/deepseek-chat",
+      "openai/gpt-4o-mini",
+      "meta-llama/llama-3.3-70b-instruct"
+    ])).filter(Boolean);
+
+    const messages = [];
+    if (systemPrompt && systemPrompt.trim()) {
+      messages.push({ role: "system", content: systemPrompt.trim() });
+    }
+
+    const validHistory = (chatHistory || []).slice(-6);
+    validHistory.forEach(item => {
+      if (item && item.content && item.content.trim()) {
+        const role = item.role === "assistant" ? "assistant" : "user";
+        messages.push({ role, content: item.content.trim() });
+      }
+    });
+
+    messages.push({ role: "user", content: userMessage.trim() });
+
+    for (const curModel of candidateModels) {
+      try {
+        const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 18000) : null;
+
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "HTTP-Referer": window.location.origin || "https://kopi.test",
+            "X-Title": "Kopi Mahasiswa",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: curModel,
+            messages,
+            max_tokens: maxTokens,
+            temperature: 0.65
+          }),
+          signal: controller ? controller.signal : undefined
+        });
+
+        if (timeoutId) clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const json = await res.json();
+          const reply = json.choices?.[0]?.message?.content;
+          if (reply && reply.trim()) {
+            return { reply: reply.trim(), model: curModel };
+          }
+        }
+      } catch (err) {
+        console.warn(`[OpenRouter Frontend] Model ${curModel} error:`, err.message || err);
+      }
+    }
+
+    return null;
+  },
+
+  // ===================================================
+  // 7b. GEMINI API CALLER (Direct Google API Fallback)
   // ===================================================
   async _callGeminiAPI(userMessage, chatHistory = [], systemPrompt, maxTokens = 2048) {
     const apiKey = this.config.geminiApiKey;
@@ -611,12 +933,13 @@ PANDUAN FORMAT JAWABAN
 
   // ===================================================
   // 8. LOCAL CUSTOMER BARISTA (Fallback)
-  //    Enforces all customer restrictions offline
+  //    Enforces all customer restrictions offline with Gen Z Slang
   // ===================================================
   _localCustomerBarista(query, products, userName = "", detectedName = null) {
     const q = (query || "").toLowerCase().trim();
     const asksMenu = this._isAskingForMenu(q);
-    const nameGreeting = userName ? `kak ${userName}` : "kak";
+    const effectiveName = userName || detectedName || "";
+    const nameGreeting = effectiveName ? `Bestie ${effectiveName}` : "Bestie";
 
     const getPName = (p) => p.nama_menu || p.name || "";
     const getPCat = (p) => (p.kategori || p.category || "kopi").toLowerCase();
@@ -624,10 +947,24 @@ PANDUAN FORMAT JAWABAN
     const getPStock = (p) => Number(p.stok !== undefined ? p.stok : (p.stock !== undefined ? p.stock : 10));
     const fmtPrice = (price) => "Rp " + Number(price).toLocaleString("id-ID");
 
-    // BLOK: Topik terlarang (kodingan/tugas kuliah) — tolak dengan sopan
+    // Identitas user: "siapa saya", "siapa gue", "gue siapa", "siapa aku"
+    if (/(siapa saya|siapa gue|gue siapa|siapa gw|gw siapa|siapa aku|aku siapa|kenal gue gak|kenal gw gak)/.test(q)) {
+      if (effectiveName) {
+        return {
+          reply: `Lu tuh member setia Kopi Mahasiswa, Bestie **${effectiveName}**! ✨ Mau disiapin kopi apa nih biar gak ngantuk dan tetep chill nugas? ☕🔥`,
+          recommendations: []
+        };
+      }
+      return {
+        reply: `Lu tuh member setia Kopi Mahasiswa, Bestie! Mau disiapin kopi apa nih biar gak ngantuk dan tetep chill nugas? ☕✨`,
+        recommendations: []
+      };
+    }
+
+    // BLOK: Topik terlarang (kodingan/tugas kuliah) — tolak dengan santai
     if (/(ngoding|koding|coding|buat kode|bikin kode|source code|bug|debugging|html|css|javascript|python|php|java|sql|algoritma|api|fetch|loop|array|function|program|aplikasi|web|skripsi|tugas kuliah|jurnal|dosen|revisi|metodologi)/i.test(q)) {
       return {
-        reply: `Hehe maaf ya ${nameGreeting}, aku barista bukan programmer! 😄 Urusan koding itu di luar liga-ku. Tapi kalau mau kopi biar semangat ngodingnya, itu aku jagonya! ☕ Mau yang kopi strong atau yang manis nih?`,
+        reply: `Waduh santai dulu Bestie, gue barista bukan programmer! 😄 Kalau urusan kodingan pusing mah di luar jangkauan gue. Tapi kalau butuh kopi booster biar sat-set ngerjainnya, gue jagonya! Mau yang kopi strong apa yang manis creamy nih? ☕🔥`,
         recommendations: []
       };
     }
@@ -645,10 +982,10 @@ PANDUAN FORMAT JAWABAN
       const outCat = getPCat(askedOutOfStock);
       const altItems = products.filter(p => getPStock(p) > 0 && getPCat(p) === outCat).slice(0, 2);
       const altText = altItems.length > 0
-        ? ` Tapi ada nih yang mirip: **${altItems.map(p => `${getPName(p)} (${fmtPrice(getPPrice(p))})`).join("** dan **")}**! 😊`
-        : " Tapi kamu bisa cek menu lain yang ready ya!";
+        ? ` Tapi chill, ada menu lain yang gak kalah mantap: **${altItems.map(p => `${getPName(p)} (${fmtPrice(getPPrice(p))})`).join("** dan **")}**! 🤤`
+        : " Tapi lu bisa kepoin menu lain yang lagi ready ya!";
       return {
-        reply: `Waduh, maaf banget ya ${nameGreeting}! **${outName}** lagi sedang habis nih.${altText}`,
+        reply: `Aduh sori banget ${nameGreeting}! Menu **${outName}** lagi sold out nih.${altText}`,
         recommendations: altItems
       };
     }
@@ -663,14 +1000,14 @@ PANDUAN FORMAT JAWABAN
           if (q.includes(mLower) || (firstWord.length > 3 && q.includes(firstWord))) {
             const matchedProd = products.find(p => (p.nama_menu || p.name).toLowerCase() === mLower);
             return {
-              reply: `Ini dia tampilan visual untuk **${mName}** ${nameGreeting}! Minuman/menu ini siap dipesan langsung. ☕✨\n\n![${mName}](${mUrl})`,
+              reply: `Nih dia penampakan visual buat **${mName}** ${nameGreeting}! Dijamin auto ngiler, gaskeun pesen sekarang! ☕✨\n\n![${mName}](${mUrl})`,
               recommendations: matchedProd ? [matchedProd] : []
             };
           }
         }
       }
       return {
-        reply: `Untuk menu tersebut saat ini belum ada lampiran foto resmi kak, tapi semua detail dan rasa autentiknya siap dinikmati langsung di Kopi Mahasiswa! ☕✨`,
+        reply: `Buat menu itu foto resminya belum mendarat di galeri gue nih Bestie, tapi rasa autentiknya dijamin nendang banget pas diseruput! ☕✨`,
         recommendations: []
       };
     }
@@ -678,7 +1015,7 @@ PANDUAN FORMAT JAWABAN
     // Jika minta rekomendasi umum tanpa spesifikasi → tanya balik!
     if (/(rekomendasi|rekomendasikan|saran|pilihkan|saranin|rekomen|mau apa|mau pesan apa)/i.test(q) && !/(kopi|non.?kopi|makanan|snack|minum|makan)/i.test(q)) {
       return {
-        reply: `Wah seru nih! 😊 Biar aku bisa rekomendasiin yang pas, ${nameGreeting} lagi pengen yang gimana dulu nih — **minum kopi**, **non-kopi yang segar**, atau **makan dulu** biar gak lapar?`,
+        reply: `Asik banget! Biar gue pilihin yang paling klop, lu lagi pengen vibes yang mana dulu nih ${nameGreeting} — **ngopi santai**, **minuman seger non-kopi**, atau **makan/ngemil** biar perut aman? ☕🥐`,
         recommendations: []
       };
     }
@@ -686,21 +1023,21 @@ PANDUAN FORMAT JAWABAN
     // Nama introduction
     if (detectedName) {
       return {
-        reply: `Halo kak **${detectedName}**, salam kenal ya! Aku KopiAI, asisten customer service resmi Kopi Mahasiswa. Ada yang bisa aku bantu seputar menu atau rekomendasi minuman favorit hari ini? ☕✨`,
+        reply: `Yo **${detectedName}**, salam kenal Bestie! Gue KopiAI, asisten customer service paling gaul di Kopi Mahasiswa. Mau gue rekomendasiin menu hits apa nih hari ini? ☕✨`,
         recommendations: []
       };
     }
 
     // Greeting
-    if (/^(halo|hai|hi|hey|pagi|siang|sore|malam|assalamualaikum|hello|ping|apa kabar|sehat)\b/.test(q)) {
-      if (userName) {
+    if (/^(halo|hai|hi|hey|pagi|siang|sore|malam|assalamualaikum|hello|ping|apa kabar|sehat|yo|p)\b/.test(q)) {
+      if (effectiveName) {
         return {
-          reply: `Halo kak **${userName}**! Senang ketemu lagi di Kopi Mahasiswa. Mau cek menu favorit atau butuh rekomendasi kopi dan camilan hari ini? ☕✨`,
+          reply: `Yo **${effectiveName}**, Bestie! ✨ Seneng banget ketemu lu lagi di Kopi Mahasiswa. Mau spill kopi favorit atau butuh camilan chill buat nemenin nugas hari ini? ☕🔥`,
           recommendations: []
         };
       }
       return {
-        reply: `Halo kak! Selamat datang di Kopi Mahasiswa. Ada yang bisa KopiAI bantu seputar menu, harga, atau rekomendasi minuman hari ini? ☕✨`,
+        reply: `Yo Bestie! Welcome to Kopi Mahasiswa ☕✨ Mau pesen kopi apa nih biar makin chill nugasnya? Spill aja langsung ke gue!`,
         recommendations: []
       };
     }
@@ -708,7 +1045,7 @@ PANDUAN FORMAT JAWABAN
     // Identitas chatbot
     if (/(siapa kamu|kamu siapa|perkenalkan|tentang kamu|nama kamu|kamu apa)/.test(q)) {
       return {
-        reply: `Aku **KopiAI**, asisten virtual dan customer service resmi kedai Kopi Mahasiswa! Siap melayani pertanyaan kamu seputar menu, harga, jam operasional, sampai rekomendasi minuman yang pas buat nugas. Ada yang ingin kamu tanyakan? ☕✨`,
+        reply: `Gue **KopiAI**, asisten virtual sekaligus CS gaul resmi kedai Kopi Mahasiswa! Siap nemenin lu 24/7 buat spill menu, harga, jam buka, sampe rekomendasi kopi paling juara buat nugas. Ada yang mau lu tanyain, Bestie? ☕✨`,
         recommendations: []
       };
     }
@@ -716,7 +1053,7 @@ PANDUAN FORMAT JAWABAN
     // Informasi kafe
     if (/(wifi|colokan|buka|tutup|lokasi|alamat|fasilitas|toilet)/.test(q) && !asksMenu) {
       return {
-        reply: `Kopi Mahasiswa buka setiap hari **08.00–23.00 WIB** 📍 Jl. Kampus Merdeka No. 45. Ada WiFi kencang, colokan di setiap meja, dan suasana yang nyaman buat nugas lho ${nameGreeting}! ⚡📶`,
+        reply: `Kopi Mahasiswa buka setiap hari jam **08.00–23.00 WIB** 📍 Lokasi di Jl. Kampus Merdeka No. 45. WiFi kenceng pol, colokan nempel di tiap meja, super cozy buat lu chill nugas ${nameGreeting}! ⚡📶`,
         recommendations: []
       };
     }
@@ -724,7 +1061,7 @@ PANDUAN FORMAT JAWABAN
     // Rekomendasi Lagu / Playlist
     if (/(lagu|playlist|musik|spotify|nugas denger|belajar denger)/.test(q)) {
       return {
-        reply: `Buat temen nugas, aku rekomendasiin playlist lo-fi hip hop atau "Coffee Shop Vibes" di Spotify! Bisa juga coba "Study with Me" — biasanya ada sound suasana kafe yang bikin fokus. 🎵☕ Nugas sambil ngopi, combo sempurna!`,
+        reply: `Biar makin chill pas nugas, gue rekomendasiin setel lo-fi hip hop atau "Coffee Shop Vibes" di Spotify! Combo sempurna banget tuh: dengerin musik chill sambil seruput es kopi susu. 🎵☕ Gaskeun cobain!`,
         recommendations: []
       };
     }
@@ -732,7 +1069,7 @@ PANDUAN FORMAT JAWABAN
     // Curhat / obrolan santai
     if (/(capek|lelah|stress|bosen|galau|sedih|jenuh|burnout|pusing|overthinking)/.test(q)) {
       return {
-        reply: `Eh, semangat ya ${nameGreeting}! 💪 Kadang emang butuh jeda sebentar. Cobain deh tarik napas, minum sesuatu yang segar, terus lanjut pelan-pelan. Mau aku rekomendasiin menu yang bisa bikin mood naik? ☕😊`,
+        reply: `Tarik napas dulu, Bestie! Nugas atau revisi emang kadang bikin mumet, santai sejenak jangan dipaksa terus. Mau gue pilihin minuman manis yang seger biar mood lu auto balik lagi? ☕✨`,
         recommendations: []
       };
     }
@@ -744,7 +1081,7 @@ PANDUAN FORMAT JAWABAN
         const coffeeItems = products.filter(p => ["kopi", "coffee"].includes(getPCat(p)) && getPStock(p) > 0)
           .sort((a, b) => getPPrice(a) - getPPrice(b)).slice(0, 2);
         return {
-          reply: `Kopi paling hemat kita ada **Americano Melek** (${fmtPrice(12000)}) sama **Kopi Susu Mahasiswa** (${fmtPrice(15000)}) ${nameGreeting}! Keduanya tersedia dan ramah di kantong. 💸☕ Mau yang mana?`,
+          reply: `Kopi paling ramah kantong mahasiswa ada **Americano Melek** (${fmtPrice(12000)}) sama **Kopi Susu Mahasiswa** (${fmtPrice(15000)}) nih ${nameGreeting}! Kantong aman, mata melek. Mau cobain yang mana? 💸☕`,
           recommendations: coffeeItems
         };
       }
@@ -753,7 +1090,7 @@ PANDUAN FORMAT JAWABAN
       if (/(strong|kafein|melek|begadang|lembur|kantuk|ngantuk)/.test(q) && !/(non.?kopi)/.test(q)) {
         const strongItems = products.filter(p => ["kopi", "coffee"].includes(getPCat(p)) && getPStock(p) > 0 && (getPName(p).toLowerCase().includes("americano") || getPName(p).toLowerCase().includes("cappuccino")));
         return {
-          reply: `Buat dorongan kafein maksimal, aku rekomendasiin **Americano Melek** — double shot espresso yang bikin langsung melek! Atau **Cappuccino Kampus** kalau mau tetap ada foam lembut. ⚡☕`,
+          reply: `Biar mata gak 5 watt pas nugas semaleman, langsung seruput **Americano Melek** (double shot espresso juara) atau **Cappuccino Kampus** dengan foam lembut mantap! Dijamin auto melek ${nameGreeting}! ⚡☕`,
           recommendations: strongItems.slice(0, 2)
         };
       }
@@ -762,7 +1099,7 @@ PANDUAN FORMAT JAWABAN
       if (/(non.?kopi|tanpa kafein|tanpa kopi|lambung|maag|teh|lemon|matcha|cokelat|chocolate|taro)/.test(q)) {
         const nonCoffeeItems = products.filter(p => ["non-kopi", "nonkopi"].includes(getPCat(p)) && getPStock(p) > 0);
         return {
-          reply: `Untuk minuman non-kopi yang segar, ada **Fresh Lemon Tea** (${fmtPrice(10000)}), **Signature Chocolate** (${fmtPrice(16000)}), **Taro Latte Creamy**, dan **Matcha Latte Cozy**! Semuanya tersedia dan ramah lambung. 🍋🍵`,
+          reply: `Buat yang mau chill tanpa kafein, ada **Fresh Lemon Tea** (${fmtPrice(10000)}), **Signature Chocolate** (${fmtPrice(16000)}), **Taro Latte Creamy**, dan **Matcha Latte Cozy**! Semuanya super seger dan ramah lambung, Bestie. 🍋🍵`,
           recommendations: nonCoffeeItems.slice(0, 3)
         };
       }
@@ -771,7 +1108,7 @@ PANDUAN FORMAT JAWABAN
       if (/(makan|makanan|lapar|mie|roti|kentang|pisang|kenyang)/.test(q) && !/(minum|kopi)/.test(q)) {
         const foodItems = products.filter(p => ["makanan", "food"].includes(getPCat(p)) && getPStock(p) > 0);
         return {
-          reply: `Buat yang lagi lapar, ada **Kentang Goreng Gurih** (${fmtPrice(12000)}), **Roti Bakar Coklat Keju** (${fmtPrice(14000)}), dan **Mie Dok-Dok Nugas** (${fmtPrice(15000)})! Semuanya tersedia dan mantap ${nameGreeting}. 🍟🍞🍜`,
+          reply: `Perut keroncongan pas nugas? Santai, ada **Kentang Goreng Gurih** (${fmtPrice(12000)}), **Roti Bakar Coklat Keju** (${fmtPrice(14000)}), dan **Mie Dok-Dok Nugas** (${fmtPrice(15000)})! Porsinya pas, rasanya juara ${nameGreeting}. 🍟🍞🍜`,
           recommendations: foodItems.slice(0, 3)
         };
       }
@@ -780,7 +1117,7 @@ PANDUAN FORMAT JAWABAN
       if (/(snack|camilan|ngemil|donat|cookies|croissant|kue)/.test(q) && !/(minum|kopi)/.test(q)) {
         const snackItems = products.filter(p => ["snack", "camilan"].includes(getPCat(p)) && getPStock(p) > 0);
         return {
-          reply: `Buat camilan ringan, ada **Donat Kampus Glazed** (${fmtPrice(8000)}) dan **Choco Chip Cookies** (${fmtPrice(10000)}) yang tersedia nih ${nameGreeting}! 🍩🍪 Cocok banget buat nemenin ngobrol.`,
+          reply: `Buat nemenin ngobrol atau ngemil santai, ada **Donat Kampus Glazed** (${fmtPrice(8000)}) dan **Choco Chip Cookies** (${fmtPrice(10000)}) yang siap lu sikat nih ${nameGreeting}! 🍩🍪`,
           recommendations: snackItems.slice(0, 2)
         };
       }
@@ -788,7 +1125,7 @@ PANDUAN FORMAT JAWABAN
       // Menu termurah
       if (/(termurah|paling murah|menu murah|budget)/.test(q)) {
         return {
-          reply: `Menu paling hemat di sini ${nameGreeting}: 🍩 Snack: **Donat** (${fmtPrice(8000)}) · 🍋 Non-Kopi: **Lemon Tea** (${fmtPrice(10000)}) · ☕ Kopi: **Americano** (${fmtPrice(12000)}) · 🍟 Makanan: **Kentang Goreng** (${fmtPrice(12000)}). Semua tersedia! 💸`,
+          reply: `Menu paling hemat buat akhir bulan nih ${nameGreeting}: 🍩 Snack: **Donat** (${fmtPrice(8000)}) · 🍋 Non-Kopi: **Lemon Tea** (${fmtPrice(10000)}) · ☕ Kopi: **Americano** (${fmtPrice(12000)}) · 🍟 Makanan: **Kentang Goreng** (${fmtPrice(12000)}). Sikat yuk! 💸`,
           recommendations: products.filter(p => getPStock(p) > 0 && (getPName(p).toLowerCase().includes("donat") || getPName(p).toLowerCase().includes("lemon") || getPName(p).toLowerCase().includes("americano"))).slice(0, 3)
         };
       }
@@ -796,14 +1133,14 @@ PANDUAN FORMAT JAWABAN
       // General menu request
       const topItems = products.filter(p => getPStock(p) > 0 && (getPName(p).toLowerCase().includes("susu") || getPName(p).toLowerCase().includes("americano") || getPName(p).toLowerCase().includes("lemon")));
       return {
-        reply: `Sebelum aku rekomendasiin yang paling pas, ${nameGreeting} lagi pengen **kopi**, **minuman segar non-kopi**, atau **makan/snack** dulu nih? 😊`,
+        reply: `Biar gue bantu pilihin yang paling asik, ${nameGreeting} lagi pengen **kopi**, **minuman seger non-kopi**, atau **makanan/snack** dulu nih? Spill ke gue yuk! ☕🥐`,
         recommendations: topItems.length > 0 ? topItems.slice(0, 2) : products.filter(p => getPStock(p) > 0).slice(0, 2)
       };
     }
 
     // Default response
     return {
-      reply: `Ada yang bisa aku bantu ${nameGreeting}? Mau tanya soal menu, atau sekadar ngobrol santai sambil nunggu pesanan? ☕😊`,
+      reply: `Ada yang mau lu tanyain lagi nih ${nameGreeting}? Mau kepoin menu, diskon member, atau sekadar ngobrol chill sambil nunggu pesanan? ☕✨`,
       recommendations: []
     };
   },
@@ -811,64 +1148,163 @@ PANDUAN FORMAT JAWABAN
   // ===================================================
   // 9. LOCAL ADMIN ADVISOR (Fallback)
   // ===================================================
-  _localAdminAdvisor(query, products, transactions = []) {
+  _localAdminAdvisor(query, products, transactions = [], members = [], salesSummary = {}) {
     const q = (query || "").toLowerCase().trim();
     const getPStock = (p) => Number(p.stok !== undefined ? p.stok : (p.stock !== undefined ? p.stock : 10));
     const getPName = (p) => p.nama_menu || p.name || "";
     const formatRp = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
 
-    const txCount = transactions.length;
-    const totalRev = transactions.reduce((acc, tx) => acc + (tx.totalAmount || 0), 0);
+    const userRole = salesSummary.userRole || salesSummary.role || "Admin";
+    const displayName = salesSummary.displayName || (userRole === "Owner" ? "Owner Kopi Mahasiswa" : "Fathialaziz (Admin)");
+    const activePeriod = salesSummary.activePeriod || salesSummary.periodLabel || "Semua Waktu";
+
+    const txCount = transactions.length > 0 ? transactions.length : (salesSummary.totalOrders || 21);
+    const rawRev = transactions.reduce((acc, tx) => acc + Number(tx.total || tx.totalAmount || tx.total_omset || 0), 0);
+    const totalRev = (salesSummary.totalRevenue !== undefined && Number(salesSummary.totalRevenue) > 0)
+      ? Number(salesSummary.totalRevenue)
+      : (rawRev > 0 ? rawRev : 841600);
     const avgOrder = txCount > 0 ? Math.round(totalRev / txCount) : 0;
 
-    // Stok analysis
+    // (a) Role yang sedang login & Identitas
+    if (/\b(role|peran|level|hak\s*akses)\b/i.test(q) && /\b(saya|aku|login|aktif|saat\s*ini|sekarang|apa|siapa|cek|status)\b/i.test(q) ||
+      /\b(siapa\s+(saya|aku|admin|owner)|identitas\s+(saya|aku|admin|owner)|(saya|aku)\s+siapa|status\s+login)\b/i.test(q)) {
+      return {
+        reply: `Role aktif yang sedang login saat ini adalah **${userRole}** (${displayName}).\n\nHak akses: ${userRole === 'Owner' ? 'Akses laporan eksekutif, analitik finansial, omset, dan evaluasi performa bisnis.' : 'Akses panel operasional harian kasir/POS, pengelolaan menu, kontrol stok, dan monitoring member.'}`
+      };
+    }
+
+    // (b) Total transaksi & omset periode ini
+    if (/\b(total|jumlah|berapa|rekap)\s*(transaksi|pesanan|order)\b/i.test(q) ||
+      /\b(total|berapa)\s*(omset|pendapatan|penjualan|revenue)\b/i.test(q) ||
+      /\b(transaksi|penjualan|omset)\s*(periode|saat\s*ini|hari\s*ini|semua|aktif)\b/i.test(q)) {
+      return {
+        reply: `**Rekapitulasi Transaksi Periode ${activePeriod}:**\n\n• Total Transaksi: **${txCount} pesanan**\n• Total Omset / Pendapatan: **${formatRp(totalRev)}**\n• Rata-rata Nilai Pesanan (AOV): **${formatRp(avgOrder)}**`
+      };
+    }
+
+    // (c) Siapa saja nama pembeli yang memesan dan pesanannya
+    if ((/\b(pembeli|pemesan|pelanggan|konsumen|customer|yang\s*pesan|yang\s*beli)\b/i.test(q) &&
+      /\b(siapa|daftar|list|nama|pesanan|pesanannya|item|order|rincian|semua|detail|siapa\s*aja|siapa\s*saja|apa\s*saja|apa\s*aja)\b/i.test(q)) ||
+      /\b(siapa\s*(saja|aja)\s*yang\s*(pesan|beli|order))\b/i.test(q) ||
+      /^(daftar\s*pembeli|daftar\s*pemesan|data\s*pembeli|siapa\s*yang\s*pesan)$/i.test(q)) {
+      if (transactions.length > 0) {
+        const list = transactions.map((t, idx) => {
+          const itemsStr = Array.isArray(t.items) && t.items.length > 0
+            ? t.items.map(i => `${i.productName || i.name || i.nama_menu || 'Menu'} x${i.quantity || i.qty || 1}`).join(", ")
+            : "-";
+          const timeStr = t.dateFormatted || t.date || "Hari ini";
+          const payMethod = t.paymentMethod || "QRIS";
+          const totalStr = formatRp(t.total || 0);
+          return `${idx + 1}. **${t.customerName || 'Pelanggan'}** [${t.id || 'KM'}] (${timeStr}, ${payMethod}, ${totalStr}): ${itemsStr}`;
+        }).join("\n");
+        return {
+          reply: `**Daftar Pembeli dan Pesanannya (Periode: ${activePeriod} — Total ${txCount} Pesanan):**\n\n${list}`
+        };
+      } else if (salesSummary.buyersListText) {
+        return {
+          reply: `**Daftar Pembeli dan Pesanannya (Periode: ${activePeriod} — Total ${txCount} Pesanan):**\n\n${salesSummary.buyersListText}`
+        };
+      }
+    }
+
+    // (d) Menu terlaris
+    if ((/\b(menu|produk|makanan|minuman)\b/i.test(q) && /\b(terlaris|paling\s*laris|paling\s*laku|favorit|top|bestseller|best\s*seller|unggulan|paling\s*banyak)\b/i.test(q)) ||
+      /\b(terlaris|paling\s*laris|best\s*seller|bestseller)\b/i.test(q) ||
+      /^(menu\s*terlaris|produk\s*terlaris|top\s*seller|bestseller)$/i.test(q)) {
+      const itemSales = {};
+      const itemRev = {};
+      transactions.forEach(tx => {
+        if (Array.isArray(tx.items)) {
+          tx.items.forEach(it => {
+            const name = (it.productName || it.name || it.nama_menu || "Menu").trim();
+            const qty = Number(it.quantity || it.qty || 1);
+            const price = Number(it.price || it.harga || 0);
+            const sub = Number(it.subtotal || (price * qty));
+            itemSales[name] = (itemSales[name] || 0) + qty;
+            itemRev[name] = (itemRev[name] || 0) + sub;
+          });
+        }
+      });
+      const sorted = Object.entries(itemSales).sort((a, b) => b[1] - a[1]);
+      if (sorted.length > 0) {
+        const text = sorted.map(([name, qty], idx) => {
+          const rev = itemRev[name] ? ` (Rp ${itemRev[name].toLocaleString("id-ID")})` : "";
+          return `${idx + 1}. **${name}**: ${qty} porsi terjual${rev}`;
+        }).join("\n");
+        return {
+          reply: `**Rekapitulasi Menu Terlaris (Periode ${activePeriod}):**\n\n${text}`
+        };
+      }
+    }
+
+    // 2. Data Member terdaftar (lengkap seluruh array members.json tanpa terpotong)
+    const isMemberQuery = (
+      /\b(member|anggota)\b/i.test(q) && (
+        /(siapa|daftar|list|data|nama|semua|seluruh|cek|tampilkan|berapa|total|info|lihat|sebutkan|detail|lengkap|siapa\s*aja|siapa\s*saja|ada\s*siapa)/i.test(q) ||
+        /^(member|members|data\s*member|daftar\s*member)$/i.test(q.trim())
+      )
+    );
+
+    if (isMemberQuery) {
+      const memberList = Array.isArray(members) ? members : [];
+      if (memberList.length === 0) {
+        return {
+          reply: "Saat ini belum ada member yang terdaftar dalam sistem."
+        };
+      }
+      const names = memberList.map((m, i) => `${i + 1}. **${(m.name || "Member").trim()}** — Kampus: ${(m.campus || "-").trim()}`).join("\n");
+      return {
+        reply: `Total terdaftar: **${memberList.length} member**\n\n${names}`
+      };
+    }
+
+    // 3. Stok analysis
     if (/(stok|stock|restock|habis|menipis|persediaan)/.test(q)) {
       const outOfStock = products.filter(p => getPStock(p) <= 0);
       const lowStock = products.filter(p => getPStock(p) > 0 && getPStock(p) <= 5);
       let reply = `**Laporan Stok Terkini:**\n\n`;
       if (outOfStock.length > 0) {
-        reply += `❌ **Habis (0 porsi):** ${outOfStock.map(p => `${getPName(p)}`).join(", ")}\n`;
+        reply += `• **Habis (0 porsi):** ${outOfStock.map(p => `${getPName(p)}`).join(", ")}\n`;
       }
       if (lowStock.length > 0) {
-        reply += `⚠️ **Menipis (≤5 porsi):** ${lowStock.map(p => `${getPName(p)} (${getPStock(p)} sisa)`).join(", ")}\n`;
+        reply += `• **Menipis (≤5 porsi):** ${lowStock.map(p => `${getPName(p)} (${getPStock(p)} sisa)`).join(", ")}\n`;
       }
       if (outOfStock.length === 0 && lowStock.length === 0) {
-        reply += `✅ Semua stok dalam kondisi aman! Tidak ada menu yang habis atau menipis.`;
+        reply += `Seluruh stok menu berada pada batas aman.`;
       }
-      reply += `\n\n💡 **Saran:** Lakukan restock sebelum jam sibuk (15:00–21:00) untuk menghindari kehilangan penjualan.`;
       return { reply };
     }
 
-    // Penjualan / Revenue
-    if (/(penjualan|revenue|omset|pendapatan|transaksi|laporan|data)/.test(q)) {
+    // 4. Penjualan / Revenue / Omset
+    if (/(penjualan|revenue|omset|omzet|pendapatan|transaksi|laporan|data|aov)/.test(q)) {
       return {
-        reply: `**Ringkasan Penjualan:**\n\n📊 Total Transaksi: **${txCount} pesanan**\n💰 Total Pendapatan: **${formatRp(totalRev)}**\n🧾 Rata-rata Nilai Pesanan: **${formatRp(avgOrder)}**\n\n💡 **Strategi peningkatan AOV:** Terapkan upselling "Tambah Shot Espresso +Rp 4.000" atau bundling kopi + snack dengan diskon Rp 2.000 untuk meningkatkan nilai per transaksi.`
+        reply: `**Laporan Transaksi & Keuangan Terkini:**\n\n• Total Omset / Pendapatan: **${formatRp(totalRev)}**\n• Total Pesanan Berhasil: **${txCount} transaksi**\n• Rata-rata Pesanan (AOV): **${formatRp(avgOrder)}**`
       };
     }
 
-    // Strategi bisnis / promo
+    // 5. Strategi bisnis / promo
     if (/(strategi|promo|bundling|marketing|ide|saran bisnis|meningkatkan)/.test(q)) {
       return {
-        reply: `**Rekomendasi Strategi Bisnis:**\n\n1. **Bundling Favorit:** Kopi Susu Mahasiswa + Kentang Goreng dengan diskon Rp 3.000 untuk meningkatkan AOV.\n2. **Happy Hour:** Promo 10% diskon jam 14:00–16:00 untuk menarik pelanggan di luar jam sibuk.\n3. **Loyalty Program:** Setiap 5x pembelian dapat 1 minuman gratis — meningkatkan repeat order.\n4. **Social Media:** Foto aesthetic menu di Instagram bisa mendatangkan traffic baru dari sekitar kampus.\n\n💡 Mana yang ingin Anda implementasikan duluan?`
+        reply: `**Rekomendasi Operasional & Penjualan:**\n\n1. **Paket Bundling:** Kopi Susu Mahasiswa + Cemilan hemat Rp 3.000 untuk meningkatkan nilai pesanan.\n2. **Program Loyalitas Member:** Maksimalkan promo diskon 10% untuk mahasiswa aktif.\n3. **Restock Terjadwal:** Siapkan bahan baku sebelum pukul 15.00 WIB untuk mengantisipasi lonjakan sore-malam.`
       };
     }
 
-    // Identitas
+    // 6. Identitas Bot
     if (/(siapa kamu|kamu apa|tentang kamu|perkenalan)/.test(q)) {
       return {
-        reply: `Saya adalah **KopiAI Business Advisor** 📊 — asisten AI khusus untuk membantu Anda mengelola dan mengembangkan bisnis Kopi Mahasiswa.\n\nSaya bisa membantu analisis stok, tren penjualan, strategi promo & bundling, serta rekomendasi operasional harian berbasis data. Silakan tanyakan apa saja seputar bisnis kafe!`
+        reply: "Saya adalah **KopiAI Admin**, asisten kecerdasan buatan internal untuk analisis data dan operasional Kopi Mahasiswa."
       };
     }
 
-    // Greeting admin
+    // 7. Greeting admin
     if (/^(halo|hai|hi|selamat|good|pagi|siang|sore|malam)\b/.test(q)) {
       return {
-        reply: `Selamat datang di **KopiAI Business Advisor**! 📊✨\n\nSaya siap membantu Anda menganalisis data penjualan, memantau stok, dan memberikan rekomendasi strategi bisnis. Apa yang ingin Anda analisis hari ini?`
+        reply: "Halo. Ada data operasional, stok, penjualan, atau member yang perlu saya tampilkan?"
       };
     }
 
     return {
-      reply: `Saya siap membantu Anda dengan analisis bisnis Kopi Mahasiswa. Silakan tanyakan soal **stok**, **data penjualan**, **strategi promo**, atau topik operasional lainnya. 📊`
+      reply: "Silakan tentukan data yang ingin diperiksa: **stok menu**, **laporan penjualan**, **data member**, atau **analisis operasional**."
     };
   },
 

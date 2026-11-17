@@ -6,52 +6,89 @@
   <meta name="description" content="Dashboard Eksekutif Owner — KOPI MAHASISWA. Analisis Statistik Penjualan, Omset, Tren dan Performa Menu Kafe.">
   <title>👑 Owner Dashboard — KOPI MAHASISWA</title>
 
+  <!-- Strict Role Protection: Owner Only -->
+  <script>
+    (function() {
+      // 1. Jika server PHP sudah memvalidasi owner:
+      if (window.SERVER_AUTH_ROLE === 'owner') {
+        localStorage.setItem('km_auth_role', 'owner');
+        localStorage.setItem('kopi_owner_verified', 'true');
+        sessionStorage.setItem('kopi_owner_verified', 'true');
+        localStorage.removeItem('kopi_member');
+        localStorage.removeItem('km_member_name');
+        return;
+      }
+
+      function getCookie(name) {
+        const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+        return v ? decodeURIComponent(v[2]) : null;
+      }
+      const cookieRole = getCookie('km_auth_role');
+      const ownerCookie = getCookie('kopi_owner_verified');
+
+      if (cookieRole === 'owner' || ownerCookie === 'true') {
+        localStorage.setItem('km_auth_role', 'owner');
+        localStorage.setItem('kopi_owner_verified', 'true');
+        sessionStorage.setItem('kopi_owner_verified', 'true');
+        localStorage.removeItem('kopi_member');
+        localStorage.removeItem('km_member_name');
+        return;
+      }
+
+      const role = localStorage.getItem('km_auth_role');
+      const isOwner = role === 'owner' || sessionStorage.getItem('kopi_owner_verified') === 'true' || localStorage.getItem('kopi_owner_verified') === 'true';
+      if (!isOwner) {
+        window.location.replace('login.php?role=owner');
+      }
+    })();
+  </script>
+
   <!-- Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
 
   <!-- Google Fonts — Playfair Display + Caveat -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
 
-  <!-- Google Fonts & Stylesheets -->
+  <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/owner.css">
 
-  <!-- Chart.js via CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="owner-body">
 
   <!-- ===================================================
-       1. OWNER TOPBAR & CONTROLS
+       1. TOPBAR OWNER (EXECUTIVE CONTROL)
        =================================================== -->
   <header class="owner-navbar">
     <div class="owner-brand">
       <div class="owner-brand-icon">👑</div>
       <div>
-        <div class="owner-brand-title">KOPI MAHASISWA</div>
-        <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
-          <span class="owner-brand-badge">Executive Owner Suite</span>
-          <span style="font-size: 0.72rem; color: #D4BEA9;">• Analytics Dashboard</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="owner-brand-title">KOPI MAHASISWA</span>
+          <span class="owner-brand-badge">Executive Suite</span>
+        </div>
+        <div style="font-size: 0.75rem; color: #D4BEA9; letter-spacing: 0.02em;">
+          Financial Overview & Strategic AI Intelligence
         </div>
       </div>
     </div>
 
-    <!-- Filter Waktu (Hari Ini, Minggu Ini, Bulan Ini) -->
+    <!-- Timeframe Filters & Action Buttons -->
     <div class="owner-topbar-controls">
-      <div class="owner-timeframe-bar" role="tablist" aria-label="Filter Periode Penjualan">
+      <!-- Timeframe Pill -->
+      <div class="owner-timeframe-bar" role="tablist" aria-label="Filter Periode Analisis">
         <button class="owner-timeframe-btn active" data-timeframe="hari_ini" role="tab" aria-selected="true">
-          <span>☀️</span>
-          <span>Hari Ini</span>
+          <span>📅</span> Hari Ini
         </button>
         <button class="owner-timeframe-btn" data-timeframe="minggu_ini" role="tab" aria-selected="false">
-          <span>📆</span>
-          <span>Minggu Ini</span>
+          <span>📊</span> Minggu Ini
         </button>
         <button class="owner-timeframe-btn" data-timeframe="bulan_ini" role="tab" aria-selected="false">
-          <span>🗓️</span>
-          <span>Bulan Ini</span>
+          <span>📈</span> Bulan Ini
         </button>
       </div>
 
@@ -60,17 +97,21 @@
           <span>🔄</span>
           <span>Perbarui Data</span>
         </button>
+        <button class="owner-btn-secondary" id="ownerExportCsvBtn" title="Ekspor Rekapitulasi Data ke Format CSV">
+          <span>📥</span>
+          <span>Ekspor CSV</span>
+        </button>
         <button class="owner-btn-secondary" id="ownerPrintBtn" title="Cetak Ringkasan Eksekutif">
           <span>🖨️</span>
           <span>Cetak Laporan</span>
         </button>
-        <a href="admin.html" class="owner-btn-secondary" title="Buka Panel Admin">
+        <a href="admin.php" class="owner-btn-secondary" title="Buka Panel Admin">
           <span>🛠️</span>
           <span>Admin Panel</span>
         </a>
-        <a href="index.html" class="owner-btn-secondary" style="border-color: rgba(245, 158, 11, 0.4); color: #FBBF24;" target="_blank" title="Buka Web Pelanggan">
-          <span>☕</span>
-          <span>Web Kafe ↗</span>
+        <a href="login.php?action=logout" class="owner-btn-secondary" style="border-color: rgba(239,68,68,0.4); color: #FCA5A5;" title="Keluar dari Akun Owner">
+          <span>🚪</span>
+          <span>Logout</span>
         </a>
       </div>
     </div>
@@ -100,6 +141,89 @@
     </section>
 
     <!-- ===================================================
+         3b. EXECUTIVE SUITE: TARGET OMSET & ESTIMASI MARGIN
+         =================================================== -->
+    <section class="owner-exec-grid">
+      <!-- Card 1: Target Omset & Ketercapaian Eksekutif -->
+      <div class="owner-exec-card">
+        <div>
+          <div class="owner-exec-header">
+            <div>
+              <h3 class="owner-exec-title">
+                <span>🎯</span>
+                <span>Target Omset Periode Aktif</span>
+              </h3>
+              <p class="owner-exec-desc">Pantau target penjualan real-time vs aktual pendapatan</p>
+            </div>
+            <button class="owner-btn-secondary" id="ownerEditTargetBtn" style="padding: 6px 12px; font-size: 0.8rem;" title="Ubah Nilai Target Omset">
+              <span>✏️</span>
+              <span>Atur Target</span>
+            </button>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px;">
+            <div>
+              <span style="font-size: 0.8rem; color: #D4BEA9; display: block;">Aktual vs Target:</span>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #FFF;">
+                <span id="ownerTargetActualVal">Rp 0</span>
+                <span style="font-size: 0.85rem; color: #A89080; font-weight: 500;">/ <span id="ownerTargetGoalVal">Rp 1.000.000</span></span>
+              </div>
+            </div>
+            <div class="owner-metric-pill" id="ownerTargetPctPill">
+              <span>🚀</span>
+              <span id="ownerTargetPctVal">0%</span>
+            </div>
+          </div>
+
+          <div class="owner-progress-track">
+            <div class="owner-progress-fill" id="ownerTargetProgressBar"></div>
+          </div>
+
+          <div class="owner-metric-row">
+            <span style="color: #D4BEA9; font-size: 0.78rem;" id="ownerTargetStatusNote">Sisa target: Rp 1.000.000</span>
+            <span style="color: #4ADE80; font-size: 0.78rem; font-weight: 700;" id="ownerTargetBadge">Dalam Progress</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Estimasi HPP & Laba Kotor (Gross Margin) -->
+      <div class="owner-exec-card">
+        <div>
+          <div class="owner-exec-header">
+            <div>
+              <h3 class="owner-exec-title">
+                <span>📊</span>
+                <span>Estimasi Margin & Laba Kotor</span>
+              </h3>
+              <p class="owner-exec-desc">Simulasi HPP (Harga Pokok Penjualan) & laba operasional kotor</p>
+            </div>
+            <span class="owner-metric-pill" style="background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #34D399;" id="ownerGrossMarginPill">
+              <span>Margin Kotor: </span>
+              <strong id="ownerGrossMarginPctLabel">60%</strong>
+            </span>
+          </div>
+
+          <div class="owner-slider-container">
+            <span style="font-size: 0.8rem; color: #D4BEA9; white-space: nowrap;">HPP: <strong id="ownerHppSliderVal" style="color: #FBBF24;">40%</strong></span>
+            <input type="range" id="ownerHppSlider" class="owner-range-slider" min="10" max="90" step="5" value="40" title="Geser untuk mengubah estimasi persentase HPP">
+            <span style="font-size: 0.75rem; color: #A89080;">(10% - 90%)</span>
+          </div>
+
+          <div class="owner-stats-duo">
+            <div class="owner-stat-box">
+              <div class="owner-stat-box-label">Estimasi HPP (Modal)</div>
+              <div class="owner-stat-box-val" id="ownerEstHppVal" style="color: #FCA5A5;">Rp 0</div>
+            </div>
+            <div class="owner-stat-box" style="border-color: rgba(52, 211, 153, 0.25);">
+              <div class="owner-stat-box-label">Estimasi Laba Kotor</div>
+              <div class="owner-stat-box-val" id="ownerEstProfitVal" style="color: #34D399;">Rp 0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================
          3. 4 SUMMARY KPI CARDS
          =================================================== -->
     <section class="owner-kpi-grid">
@@ -122,27 +246,27 @@
         <div class="kpi-accent-glow" style="background: linear-gradient(90deg, #3B82F6, #60A5FA);"></div>
         <div class="kpi-header">
           <span class="kpi-label">Total Pesanan Terjual</span>
-          <div class="kpi-icon-wrap" style="color: #60A5FA;">🧾</div>
+          <div class="kpi-icon-wrap" style="color: #60A5FA;">📦</div>
         </div>
-        <div class="kpi-value" id="ownerKpiOrders">0 Pesanan</div>
-        <div class="kpi-sub" id="ownerKpiItems">
-          <span style="color: #60A5FA;">📦</span>
-          <span>0 porsi terjual</span>
+        <div class="kpi-value" id="ownerKpiOrders">0 Tx</div>
+        <div class="kpi-sub">
+          <span style="color: #60A5FA;">●</span>
+          <span id="ownerKpiItemsSold">0 porsi terjual</span>
         </div>
       </div>
 
       <!-- KPI 3: Menu Terlaris (Top Seller) -->
-      <div class="owner-kpi-card card-top-seller">
+      <div class="owner-kpi-card card-bestseller">
         <div class="kpi-accent-glow" style="background: linear-gradient(90deg, #EC4899, #F43F5E);"></div>
         <div class="kpi-header">
           <span class="kpi-label">Menu Terlaris (Top Seller)</span>
-          <div class="kpi-icon-wrap" style="color: #F43F5E;">🏆</div>
+          <div class="kpi-icon-wrap" style="color: #F43F5E;">⭐</div>
         </div>
-        <div class="bestseller-preview-wrap">
-          <img src="images/kopi-susu.jpg" alt="Bestseller" class="bestseller-thumb" id="ownerBestsellerThumb">
-          <div style="overflow: hidden;">
-            <div class="kpi-value" id="ownerBestsellerName" style="font-size: 1.15rem; margin: 0;">-</div>
-            <div class="kpi-sub" id="ownerBestsellerSub" style="color: #FBBF24;">0 Porsi</div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-top: 4px;">
+          <img id="ownerBestsellerThumb" src="images/kopi-susu.jpg" alt="Menu Terlaris" class="bestseller-thumb">
+          <div>
+            <div class="bestseller-title" id="ownerBestsellerName">Memuat...</div>
+            <div class="bestseller-stats" id="ownerBestsellerSub">-</div>
           </div>
         </div>
       </div>
@@ -158,6 +282,89 @@
         <div class="kpi-sub">
           <span style="color: #34D399;">💳</span>
           <span>Nilai rata-rata per pesanan</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================
+         3b. EXECUTIVE SUITE: TARGET OMSET & ESTIMASI MARGIN
+         =================================================== -->
+    <section class="owner-exec-grid">
+      <!-- Card 1: Target Omset & Ketercapaian Eksekutif -->
+      <div class="owner-exec-card">
+        <div>
+          <div class="owner-exec-header">
+            <div>
+              <h3 class="owner-exec-title">
+                <span>🎯</span>
+                <span>Target Omset Periode Aktif</span>
+              </h3>
+              <p class="owner-exec-desc">Pantau target penjualan real-time vs aktual pendapatan</p>
+            </div>
+            <button class="owner-btn-secondary" id="ownerEditTargetBtn" style="padding: 6px 12px; font-size: 0.8rem;" title="Ubah Nilai Target Omset">
+              <span>✏️</span>
+              <span>Atur Target</span>
+            </button>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px;">
+            <div>
+              <span style="font-size: 0.8rem; color: #D4BEA9; display: block;">Aktual vs Target:</span>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #FFF;">
+                <span id="ownerTargetActualVal">Rp 0</span>
+                <span style="font-size: 0.85rem; color: #A89080; font-weight: 500;">/ <span id="ownerTargetGoalVal">Rp 1.000.000</span></span>
+              </div>
+            </div>
+            <div class="owner-metric-pill" id="ownerTargetPctPill">
+              <span>🚀</span>
+              <span id="ownerTargetPctVal">0%</span>
+            </div>
+          </div>
+
+          <div class="owner-progress-track">
+            <div class="owner-progress-fill" id="ownerTargetProgressBar"></div>
+          </div>
+
+          <div class="owner-metric-row">
+            <span style="color: #D4BEA9; font-size: 0.78rem;" id="ownerTargetStatusNote">Sisa target: Rp 1.000.000</span>
+            <span style="color: #4ADE80; font-size: 0.78rem; font-weight: 700;" id="ownerTargetBadge">Dalam Progress</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Estimasi HPP & Laba Kotor (Gross Margin) -->
+      <div class="owner-exec-card">
+        <div>
+          <div class="owner-exec-header">
+            <div>
+              <h3 class="owner-exec-title">
+                <span>📊</span>
+                <span>Estimasi Margin & Laba Kotor</span>
+              </h3>
+              <p class="owner-exec-desc">Simulasi HPP (Harga Pokok Penjualan) & laba operasional kotor</p>
+            </div>
+            <span class="owner-metric-pill" style="background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #34D399;" id="ownerGrossMarginPill">
+              <span>Margin Kotor: </span>
+              <strong id="ownerGrossMarginPctLabel">60%</strong>
+            </span>
+          </div>
+
+          <div class="owner-slider-container">
+            <span style="font-size: 0.8rem; color: #D4BEA9; white-space: nowrap;">HPP: <strong id="ownerHppSliderVal" style="color: #FBBF24;">40%</strong></span>
+            <input type="range" id="ownerHppSlider" class="owner-range-slider" min="10" max="90" step="5" value="40" title="Geser untuk mengubah estimasi persentase HPP">
+            <span style="font-size: 0.75rem; color: #A89080;">(10% - 90%)</span>
+          </div>
+
+          <div class="owner-stats-duo">
+            <div class="owner-stat-box">
+              <div class="owner-stat-box-label">Estimasi HPP (Modal)</div>
+              <div class="owner-stat-box-val" id="ownerEstHppVal" style="color: #FCA5A5;">Rp 0</div>
+            </div>
+            <div class="owner-stat-box" style="border-color: rgba(52, 211, 153, 0.25);">
+              <div class="owner-stat-box-label">Estimasi Laba Kotor</div>
+              <div class="owner-stat-box-val" id="ownerEstProfitVal" style="color: #34D399;">Rp 0</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -188,6 +395,89 @@
 
       <div class="chart-wrapper">
         <canvas id="ownerChartCanvas"></canvas>
+      </div>
+    </section>
+
+    <!-- ===================================================
+         3b. EXECUTIVE SUITE: TARGET OMSET & ESTIMASI MARGIN
+         =================================================== -->
+    <section class="owner-exec-grid">
+      <!-- Card 1: Target Omset & Ketercapaian Eksekutif -->
+      <div class="owner-exec-card">
+        <div>
+          <div class="owner-exec-header">
+            <div>
+              <h3 class="owner-exec-title">
+                <span>🎯</span>
+                <span>Target Omset Periode Aktif</span>
+              </h3>
+              <p class="owner-exec-desc">Pantau target penjualan real-time vs aktual pendapatan</p>
+            </div>
+            <button class="owner-btn-secondary" id="ownerEditTargetBtn" style="padding: 6px 12px; font-size: 0.8rem;" title="Ubah Nilai Target Omset">
+              <span>✏️</span>
+              <span>Atur Target</span>
+            </button>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px;">
+            <div>
+              <span style="font-size: 0.8rem; color: #D4BEA9; display: block;">Aktual vs Target:</span>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #FFF;">
+                <span id="ownerTargetActualVal">Rp 0</span>
+                <span style="font-size: 0.85rem; color: #A89080; font-weight: 500;">/ <span id="ownerTargetGoalVal">Rp 1.000.000</span></span>
+              </div>
+            </div>
+            <div class="owner-metric-pill" id="ownerTargetPctPill">
+              <span>🚀</span>
+              <span id="ownerTargetPctVal">0%</span>
+            </div>
+          </div>
+
+          <div class="owner-progress-track">
+            <div class="owner-progress-fill" id="ownerTargetProgressBar"></div>
+          </div>
+
+          <div class="owner-metric-row">
+            <span style="color: #D4BEA9; font-size: 0.78rem;" id="ownerTargetStatusNote">Sisa target: Rp 1.000.000</span>
+            <span style="color: #4ADE80; font-size: 0.78rem; font-weight: 700;" id="ownerTargetBadge">Dalam Progress</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Estimasi HPP & Laba Kotor (Gross Margin) -->
+      <div class="owner-exec-card">
+        <div>
+          <div class="owner-exec-header">
+            <div>
+              <h3 class="owner-exec-title">
+                <span>📊</span>
+                <span>Estimasi Margin & Laba Kotor</span>
+              </h3>
+              <p class="owner-exec-desc">Simulasi HPP (Harga Pokok Penjualan) & laba operasional kotor</p>
+            </div>
+            <span class="owner-metric-pill" style="background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #34D399;" id="ownerGrossMarginPill">
+              <span>Margin Kotor: </span>
+              <strong id="ownerGrossMarginPctLabel">60%</strong>
+            </span>
+          </div>
+
+          <div class="owner-slider-container">
+            <span style="font-size: 0.8rem; color: #D4BEA9; white-space: nowrap;">HPP: <strong id="ownerHppSliderVal" style="color: #FBBF24;">40%</strong></span>
+            <input type="range" id="ownerHppSlider" class="owner-range-slider" min="10" max="90" step="5" value="40" title="Geser untuk mengubah estimasi persentase HPP">
+            <span style="font-size: 0.75rem; color: #A89080;">(10% - 90%)</span>
+          </div>
+
+          <div class="owner-stats-duo">
+            <div class="owner-stat-box">
+              <div class="owner-stat-box-label">Estimasi HPP (Modal)</div>
+              <div class="owner-stat-box-val" id="ownerEstHppVal" style="color: #FCA5A5;">Rp 0</div>
+            </div>
+            <div class="owner-stat-box" style="border-color: rgba(52, 211, 153, 0.25);">
+              <div class="owner-stat-box-label">Estimasi Laba Kotor</div>
+              <div class="owner-stat-box-val" id="ownerEstProfitVal" style="color: #34D399;">Rp 0</div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -266,7 +556,90 @@
     </section>
 
     <!-- ===================================================
-         6. METODE PEMBAYARAN & RINGKASAN FINANSIAL
+         3b. EXECUTIVE SUITE: TARGET OMSET & ESTIMASI MARGIN
+         =================================================== -->
+    <section class="owner-exec-grid">
+      <!-- Card 1: Target Omset & Ketercapaian Eksekutif -->
+      <div class="owner-exec-card">
+        <div>
+          <div class="owner-exec-header">
+            <div>
+              <h3 class="owner-exec-title">
+                <span>🎯</span>
+                <span>Target Omset Periode Aktif</span>
+              </h3>
+              <p class="owner-exec-desc">Pantau target penjualan real-time vs aktual pendapatan</p>
+            </div>
+            <button class="owner-btn-secondary" id="ownerEditTargetBtn" style="padding: 6px 12px; font-size: 0.8rem;" title="Ubah Nilai Target Omset">
+              <span>✏️</span>
+              <span>Atur Target</span>
+            </button>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px;">
+            <div>
+              <span style="font-size: 0.8rem; color: #D4BEA9; display: block;">Aktual vs Target:</span>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #FFF;">
+                <span id="ownerTargetActualVal">Rp 0</span>
+                <span style="font-size: 0.85rem; color: #A89080; font-weight: 500;">/ <span id="ownerTargetGoalVal">Rp 1.000.000</span></span>
+              </div>
+            </div>
+            <div class="owner-metric-pill" id="ownerTargetPctPill">
+              <span>🚀</span>
+              <span id="ownerTargetPctVal">0%</span>
+            </div>
+          </div>
+
+          <div class="owner-progress-track">
+            <div class="owner-progress-fill" id="ownerTargetProgressBar"></div>
+          </div>
+
+          <div class="owner-metric-row">
+            <span style="color: #D4BEA9; font-size: 0.78rem;" id="ownerTargetStatusNote">Sisa target: Rp 1.000.000</span>
+            <span style="color: #4ADE80; font-size: 0.78rem; font-weight: 700;" id="ownerTargetBadge">Dalam Progress</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Estimasi HPP & Laba Kotor (Gross Margin) -->
+      <div class="owner-exec-card">
+        <div>
+          <div class="owner-exec-header">
+            <div>
+              <h3 class="owner-exec-title">
+                <span>📊</span>
+                <span>Estimasi Margin & Laba Kotor</span>
+              </h3>
+              <p class="owner-exec-desc">Simulasi HPP (Harga Pokok Penjualan) & laba operasional kotor</p>
+            </div>
+            <span class="owner-metric-pill" style="background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #34D399;" id="ownerGrossMarginPill">
+              <span>Margin Kotor: </span>
+              <strong id="ownerGrossMarginPctLabel">60%</strong>
+            </span>
+          </div>
+
+          <div class="owner-slider-container">
+            <span style="font-size: 0.8rem; color: #D4BEA9; white-space: nowrap;">HPP: <strong id="ownerHppSliderVal" style="color: #FBBF24;">40%</strong></span>
+            <input type="range" id="ownerHppSlider" class="owner-range-slider" min="10" max="90" step="5" value="40" title="Geser untuk mengubah estimasi persentase HPP">
+            <span style="font-size: 0.75rem; color: #A89080;">(10% - 90%)</span>
+          </div>
+
+          <div class="owner-stats-duo">
+            <div class="owner-stat-box">
+              <div class="owner-stat-box-label">Estimasi HPP (Modal)</div>
+              <div class="owner-stat-box-val" id="ownerEstHppVal" style="color: #FCA5A5;">Rp 0</div>
+            </div>
+            <div class="owner-stat-box" style="border-color: rgba(52, 211, 153, 0.25);">
+              <div class="owner-stat-box-label">Estimasi Laba Kotor</div>
+              <div class="owner-stat-box-val" id="ownerEstProfitVal" style="color: #34D399;">Rp 0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================
+         6. METODE PEMBAYARAN
          =================================================== -->
     <section class="owner-card" style="margin-top: 28px; margin-bottom: 0;">
       <div class="owner-card-header" style="margin-bottom: 16px;">
@@ -304,7 +677,225 @@
       </div>
     </section>
 
+    <!-- ===================================================
+         7. TATA KELOLA AI (KOPIAI GOVERNANCE) & 5 TRANSAKSI TERAKHIR
+         =================================================== -->
+    <section class="owner-tables-grid" style="margin-top: 28px;">
+      <!-- Panel Kiri: Tata Kelola AI (KopiAI Governance) -->
+      <div class="owner-card" style="margin-bottom: 0;">
+        <div class="owner-card-header" style="margin-bottom: 16px;">
+          <div class="owner-card-title-wrap">
+            <span style="font-size: 1.3rem;">🤖</span>
+            <div>
+              <h3 class="owner-card-title" style="font-size: 1.15rem;">Tata Kelola AI (KopiAI Governance)</h3>
+              <p class="owner-card-subtitle">Kontrol status API, pemakaian kuota, dan kapabilitas kecerdasan buatan kafe</p>
+            </div>
+          </div>
+          <button class="owner-btn-secondary" id="ownerAiConfigBtn" style="padding: 6px 12px; font-size: 0.8rem;" title="Konfigurasi Kunci & Model AI">
+            <span>⚙️</span>
+            <span>Atur AI</span>
+          </button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.06);">
+            <div>
+              <div style="font-size: 0.8rem; color: #D4BEA9;">Status Koneksi AI Engine</div>
+              <div style="font-weight: 700; color: #FFF; font-size: 0.95rem;" id="ownerAiStatusTitle">Tersambung Aktif</div>
+            </div>
+            <span id="ownerAiStatusBadge" class="owner-badge-success">● API Ready</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="padding: 10px 12px; background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.06);">
+              <div style="font-size: 0.75rem; color: #D4BEA9;">Model AI Terpilih</div>
+              <div style="font-weight: 700; color: #FBBF24; font-size: 0.88rem; margin-top: 2px;" id="ownerAiModelLabel">Gemini 2.5 Flash</div>
+            </div>
+            <div style="padding: 10px 12px; background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.06);">
+              <div style="font-size: 0.75rem; color: #D4BEA9;">Total Interaksi AI</div>
+              <div style="font-weight: 700; color: #34D399; font-size: 0.88rem; margin-top: 2px;" id="ownerAiInteractionCount">0 Chat</div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.78rem; color: #A89080; line-height: 1.4;">
+            💡 KopiAI Admin melayani ringkasan omset, tren transaksi, dan audit data kasir secara otomatis tanpa kompromi keamanan.
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel Kanan: 5 Transaksi Terakhir (Audit Operasional Cepat) -->
+      <div class="owner-card" style="margin-bottom: 0;">
+        <div class="owner-card-header" style="margin-bottom: 16px;">
+          <div class="owner-card-title-wrap">
+            <span style="font-size: 1.3rem;">🔍</span>
+            <div>
+              <h3 class="owner-card-title" style="font-size: 1.15rem;">5 Transaksi Terkini (Audit Cepat)</h3>
+              <p class="owner-card-subtitle">Pengawasan 5 transaksi riil terbaru dari kasir/POS</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="owner-table">
+            <thead>
+              <tr>
+                <th>ID Transaksi</th>
+                <th>Waktu</th>
+                <th>Pelanggan</th>
+                <th>Metode</th>
+                <th style="text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody id="ownerRecentTxTableBody">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 24px; color: #A89080;">
+                  Memuat data transaksi terbaru...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================
+         3b. EXECUTIVE SUITE: TARGET OMSET & ESTIMASI MARGIN
+         =================================================== -->
+    <section class="owner-exec-grid">
+      <!-- Card 1: Target Omset & Ketercapaian Eksekutif -->
+      <div class="owner-exec-card">
+        <div>
+          <div class="owner-exec-header">
+            <div>
+              <h3 class="owner-exec-title">
+                <span>🎯</span>
+                <span>Target Omset Periode Aktif</span>
+              </h3>
+              <p class="owner-exec-desc">Pantau target penjualan real-time vs aktual pendapatan</p>
+            </div>
+            <button class="owner-btn-secondary" id="ownerEditTargetBtn" style="padding: 6px 12px; font-size: 0.8rem;" title="Ubah Nilai Target Omset">
+              <span>✏️</span>
+              <span>Atur Target</span>
+            </button>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px;">
+            <div>
+              <span style="font-size: 0.8rem; color: #D4BEA9; display: block;">Aktual vs Target:</span>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #FFF;">
+                <span id="ownerTargetActualVal">Rp 0</span>
+                <span style="font-size: 0.85rem; color: #A89080; font-weight: 500;">/ <span id="ownerTargetGoalVal">Rp 1.000.000</span></span>
+              </div>
+            </div>
+            <div class="owner-metric-pill" id="ownerTargetPctPill">
+              <span>🚀</span>
+              <span id="ownerTargetPctVal">0%</span>
+            </div>
+          </div>
+
+          <div class="owner-progress-track">
+            <div class="owner-progress-fill" id="ownerTargetProgressBar"></div>
+          </div>
+
+          <div class="owner-metric-row">
+            <span style="color: #D4BEA9; font-size: 0.78rem;" id="ownerTargetStatusNote">Sisa target: Rp 1.000.000</span>
+            <span style="color: #4ADE80; font-size: 0.78rem; font-weight: 700;" id="ownerTargetBadge">Dalam Progress</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Estimasi HPP & Laba Kotor (Gross Margin) -->
+      <div class="owner-exec-card">
+        <div>
+          <div class="owner-exec-header">
+            <div>
+              <h3 class="owner-exec-title">
+                <span>📊</span>
+                <span>Estimasi Margin & Laba Kotor</span>
+              </h3>
+              <p class="owner-exec-desc">Simulasi HPP (Harga Pokok Penjualan) & laba operasional kotor</p>
+            </div>
+            <span class="owner-metric-pill" style="background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #34D399;" id="ownerGrossMarginPill">
+              <span>Margin Kotor: </span>
+              <strong id="ownerGrossMarginPctLabel">60%</strong>
+            </span>
+          </div>
+
+          <div class="owner-slider-container">
+            <span style="font-size: 0.8rem; color: #D4BEA9; white-space: nowrap;">HPP: <strong id="ownerHppSliderVal" style="color: #FBBF24;">40%</strong></span>
+            <input type="range" id="ownerHppSlider" class="owner-range-slider" min="10" max="90" step="5" value="40" title="Geser untuk mengubah estimasi persentase HPP">
+            <span style="font-size: 0.75rem; color: #A89080;">(10% - 90%)</span>
+          </div>
+
+          <div class="owner-stats-duo">
+            <div class="owner-stat-box">
+              <div class="owner-stat-box-label">Estimasi HPP (Modal)</div>
+              <div class="owner-stat-box-val" id="ownerEstHppVal" style="color: #FCA5A5;">Rp 0</div>
+            </div>
+            <div class="owner-stat-box" style="border-color: rgba(52, 211, 153, 0.25);">
+              <div class="owner-stat-box-label">Estimasi Laba Kotor</div>
+              <div class="owner-stat-box-val" id="ownerEstProfitVal" style="color: #34D399;">Rp 0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
+
+  <!-- ===================================================
+       MODAL 1: ATUR TARGET OMSET EKSEKUTIF
+       =================================================== -->
+  <div class="owner-modal-backdrop" id="ownerTargetModal">
+    <div class="owner-modal-box">
+      <h3 style="font-family: var(--font-comic); font-size: 1.3rem; color: #FFF; margin: 0 0 8px;">🎯 Atur Target Omset</h3>
+      <p style="font-size: 0.85rem; color: #D4BEA9; margin: 0 0 18px;">
+        Masukkan target pendapatan penjualan untuk periode <strong id="ownerTargetModalPeriod" style="color: #FBBF24;">Hari Ini</strong>:
+      </p>
+      
+      <div style="margin-bottom: 18px;">
+        <label style="display: block; font-size: 0.8rem; color: #D4BEA9; text-transform: uppercase; font-weight: 700; margin-bottom: 6px;">Target Omset (Rp)</label>
+        <input type="number" id="ownerTargetInput" class="owner-pin-input" style="font-size: 1.2rem; letter-spacing: normal; text-align: left; padding: 12px 16px;" placeholder="Contoh: 1000000" min="10000" step="50000">
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="owner-btn-secondary" id="ownerTargetCancelBtn" style="padding: 10px 18px;">Batal</button>
+        <button class="owner-btn-primary" id="ownerTargetSaveBtn" style="padding: 10px 20px;">💾 Simpan Target</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================
+       MODAL 2: KONFIGURASI AI GOVERNANCE
+       =================================================== -->
+  <div class="owner-modal-backdrop" id="ownerAiModal">
+    <div class="owner-modal-box">
+      <h3 style="font-family: var(--font-comic); font-size: 1.3rem; color: #FFF; margin: 0 0 8px;">⚙️ Konfigurasi Tata Kelola AI</h3>
+      <p style="font-size: 0.85rem; color: #D4BEA9; margin: 0 0 18px;">
+        Atur OpenRouter API Key dan model bahasa untuk kecerdasan KopiAI.
+      </p>
+      
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-size: 0.8rem; color: #D4BEA9; text-transform: uppercase; font-weight: 700; margin-bottom: 6px;">OpenRouter API Key</label>
+        <input type="password" id="ownerAiKeyInput" class="owner-pin-input" style="font-size: 0.95rem; letter-spacing: normal; text-align: left; padding: 10px 14px;" placeholder="sk-or-v1-...">
+      </div>
+
+      <div style="margin-bottom: 18px;">
+        <label style="display: block; font-size: 0.8rem; color: #D4BEA9; text-transform: uppercase; font-weight: 700; margin-bottom: 6px;">Pilihan Model AI</label>
+        <select id="ownerAiModelSelect" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.4); border: 2px solid rgba(255,255,255,0.15); border-radius: var(--radius-md); color: #FFF; outline: none;">
+          <option value="google/gemini-2.0-flash-001">Google Gemini 2.0 Flash (Direkomendasikan)</option>
+          <option value="google/gemini-flash-1.5">Google Gemini 1.5 Flash</option>
+          <option value="meta-llama/llama-3.3-70b-instruct">Meta Llama 3.3 70B Instruct</option>
+          <option value="deepseek/deepseek-chat">DeepSeek V3 Chat</option>
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="owner-btn-secondary" id="ownerAiCancelBtn" style="padding: 10px 18px;">Tutup</button>
+        <button class="owner-btn-primary" id="ownerAiSaveBtn" style="padding: 10px 20px;">💾 Simpan Pengaturan</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===================================================
        SCRIPTS

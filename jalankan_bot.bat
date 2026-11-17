@@ -14,3 +14,4 @@ timeout /t 1 /nobreak >nul
 echo Memulai bot...
 node index.js
 pause
+

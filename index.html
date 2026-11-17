@@ -1,914 +1,786 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description"
-    content="Kopi Mahasiswa — Kopi yang nemenin setiap tugas, kelas, dan cerita mahasiswa. Coffee shop modern dengan harga ramah kantong mahasiswa.">
-  <meta name="keywords" content="kopi mahasiswa, coffee shop, kopi susu aren, ngopi kampus, nongkrong nugas">
-  <title>KOPI MAHASISWA — Ngopi, Kuliah, Gas!</title>
-
-  <!-- Favicon / Coffee Emoji Icon -->
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☕</text></svg>">
-
-  <!-- Google Fonts — Playfair Display (elegant serif) + Caveat (handwritten) -->
+  <title>Kopi Mahasiswa — Platform Kafe & Teman Nugas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F8F9F7;
+      --surface: #FFFFFF;
+      --surface-subtle: #F3F4F1;
+      --border: #E5E7EB;
+      --border-dark: #D1D5DB;
+      --primary: #2C3E2D; /* Dark olive coffee tone matching the reference */
+      --primary-hover: #223223;
+      --primary-soft: rgba(44, 62, 45, 0.08);
+      --accent: #C28D5A;
+      --text: #1C1917;
+      --text-muted: #57534E;
+      --text-light: #78716C;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 10px 25px -5px rgba(0,0,0,0.06), 0 8px 10px -6px rgba(0,0,0,0.04);
+      --shadow-lg: 0 20px 30px -10px rgba(0,0,0,0.08);
+    }
 
-  <!-- CSS Stylesheets -->
-  <link rel="stylesheet" href="css/variables.css">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/catalog.css">
-  <link rel="stylesheet" href="css/transaction.css">
-  <link rel="stylesheet" href="css/ai-barista.css">
-  <link rel="stylesheet" href="css/owner.css">
-  <link rel="stylesheet" href="css/responsive.css">
-  <link rel="stylesheet" href="css/music-player.css">
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* HEADER / NAVBAR */
+    .landing-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 76px;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-icon-box {
+      width: 42px;
+      height: 42px;
+      background: var(--primary);
+      color: #FFF;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .brand-text-col {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title {
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .brand-tagline {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-light);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.92rem;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--primary);
+    }
+
+    .btn-dashboard-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary);
+      color: #FFF !important;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      z-index: 50;
+      cursor: pointer;
+    }
+
+    .btn-dashboard-nav:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* HERO SECTION */
+    .hero-section {
+      padding: 64px 0 80px;
+      position: relative;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    /* LEFT HERO */
+    .hero-content {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: #E8ECE8;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #274D29;
+      margin-bottom: 24px;
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #2E7D32;
+    }
+
+    .hero-heading {
+      font-size: 3.1rem;
+      line-height: 1.15;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--primary);
+      margin-bottom: 24px;
+    }
+
+    .hero-description {
+      font-size: 1.05rem;
+      line-height: 1.65;
+      color: var(--text-muted);
+      margin-bottom: 36px;
+      max-width: 520px;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-hero-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--primary);
+      color: #FFF !important;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      z-index: 50;
+      cursor: pointer;
+    }
+
+    .btn-hero-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .btn-hero-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border-dark);
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-hero-secondary:hover {
+      background: var(--surface-subtle);
+      border-color: var(--text-muted);
+    }
+
+    /* RIGHT HERO - SYSTEM PREVIEW CARD (MATCHING USER SCREENSHOT) */
+    .preview-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: var(--shadow-md);
+      position: relative;
+    }
+
+    .preview-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .preview-tag {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-light);
+    }
+
+    .preview-badge-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: #EFEFEF;
+      color: #444;
+      padding: 4px 12px;
+      border-radius: 6px;
+    }
+
+    .preview-title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .preview-subtitle {
+      font-size: 0.82rem;
+      color: var(--text-light);
+      margin-bottom: 24px;
+    }
+
+    /* 2 SMALL STAT BOXES */
+    .preview-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-mini-box {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: #FAFAFA;
+    }
+
+    .stat-mini-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-light);
+      margin-bottom: 10px;
+    }
+
+    .stat-mini-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .stat-mini-desc {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* MODULE LIST */
+    .module-list-box {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      background: #FFFFFF;
+    }
+
+    .module-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .module-list-title {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .module-list-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-light);
+    }
+
+    .module-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #F1F1F0;
+    }
+
+    .module-item:last-child {
+      border-bottom: none;
+      padding-bottom: 4px;
+    }
+
+    .module-item-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .module-icon {
+      width: 36px;
+      height: 36px;
+      background: #F4F4F3;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .module-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .module-desc {
+      font-size: 0.72rem;
+      color: var(--text-light);
+    }
+
+    .module-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-light);
+      font-family: monospace;
+    }
+
+    /* SECTION 2: ROLES & FEATURES */
+    .features-section {
+      padding: 64px 0 80px;
+      border-top: 1px solid var(--border);
+      background: #FFFFFF;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 650px;
+      margin: 0 auto 48px;
+    }
+
+    .section-tag {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    .section-desc {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .role-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s ease;
+    }
+
+    .role-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .role-card-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      align-self: flex-start;
+    }
+
+    .badge-member { background: rgba(59,130,246,0.12); color: #2563EB; }
+    .badge-admin { background: rgba(139,92,246,0.12); color: #7C3AED; }
+    .badge-owner { background: rgba(245,158,11,0.12); color: #D97706; }
+
+    .role-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .role-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 20px;
+    }
+
+    .role-features {
+      list-style: none;
+      margin-bottom: 24px;
+    }
+
+    .role-features li {
+      font-size: 0.82rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .role-features li span {
+      color: #10B981;
+      font-weight: 700;
+    }
+
+    .btn-role-login {
+      display: block;
+      text-align: center;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border-dark);
+      background: #FFF;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      position: relative;
+      z-index: 50;
+      cursor: pointer;
+    }
+
+    .btn-role-login:hover {
+      background: var(--primary);
+      color: #FFF;
+      border-color: var(--primary);
+    }
+
+    /* FOOTER */
+    .landing-footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-light);
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 960px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+      .roles-grid {
+        grid-template-columns: 1fr;
+      }
+      .nav-links {
+        display: none;
+      }
+      .hero-heading {
+        font-size: 2.4rem;
+      }
+    }
+  </style>
 </head>
-
 <body>
 
   <!-- ===================================================
-       NAVBAR HEADER
+       HEADER & NAVBAR
        =================================================== -->
-  <header class="navbar-header" id="navbarHeader">
-    <div class="container navbar-container">
+  <header class="landing-header">
+    <div class="container header-nav">
       <!-- Brand Logo -->
-      <a href="#beranda" class="brand-logo" aria-label="Kopi Mahasiswa Beranda">
-        <div class="brand-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-            <line x1="6" y1="1" x2="6" y2="4"></line>
-            <line x1="10" y1="1" x2="10" y2="4"></line>
-            <line x1="14" y1="1" x2="14" y2="4"></line>
-          </svg>
-        </div>
-        <div class="brand-text-wrap">
-          <span class="brand-title">KOPI MAHASISWA</span>
-          <span class="brand-tagline">Teman Nugas & Kuliah</span>
+      <a href="./" class="brand-wrap">
+        <div class="brand-icon-box">☕</div>
+        <div class="brand-text-col">
+          <span class="brand-title">KopiMahasiswa.</span>
+          <span class="brand-tagline">Teman Nugas & Kafe Digital</span>
         </div>
       </a>
 
-      <!-- Desktop Nav Menu -->
-      <nav aria-label="Navigasi Utama">
-        <ul class="nav-menu">
-          <li><a href="#beranda" class="nav-link active">Beranda</a></li>
-          <li><a href="#tentang" class="nav-link">Mengapa Kami</a></li>
-          <li><a href="#menu" class="nav-link">Menu Favorit</a></li>
-          <li><a href="#kontak" class="nav-link">Kontak</a></li>
-          <li>
-            <a href="javascript:void(0)" class="nav-link" id="navHistoryBtn">
-              Riwayat <span class="nav-badge" id="navHistoryBadge">0</span>
-            </a>
-          </li>
-        </ul>
-      </nav>
+      <!-- Navigation Links -->
+      <ul class="nav-links">
+        <li><a href="#beranda">Beranda</a></li>
+        <li><a href="#tentang">Tentang</a></li>
+        <li><a href="#fitur">Fitur Multi-Role</a></li>
+        <li><a href="https://wa.me/6285173022407" target="_blank" rel="noopener">WhatsApp Kafe</a></li>
+      </ul>
 
-      <!-- Nav Actions (Music Capsule, Cart & Member) -->
-      <div class="nav-actions">
-        <!-- 1. Super Minimalist Music Player Capsule -->
-        <div class="header-music-capsule" id="headerMusicCapsule" role="region"
-          aria-label="Pemutar Musik Kopi Mahasiswa">
-          <span class="capsule-icon" id="capsuleIcon" title="Lamp - Hakanaki Haru No Ichimaku">🎧</span>
-          <button type="button" class="capsule-btn" id="capsulePrevBtn" aria-label="Lagu Sebelumnya"
-            title="Lagu Sebelumnya (<<)">
-            ⏮
-          </button>
-          <button type="button" class="capsule-btn capsule-btn-play" id="capsulePlayBtn" aria-label="Putar / Jeda Musik"
-            title="Putar Musik (▶)">
-            ▶
-          </button>
-          <button type="button" class="capsule-btn" id="capsuleNextBtn" aria-label="Lagu Berikutnya"
-            title="Lagu Berikutnya (>>)">
-            ⏭
-          </button>
-        </div>
-
-        <!-- Fallback Audio Element -->
-        <audio id="lofiAudio" loop preload="none">
-          <source src="assets/audio/lofi_coffee.mp3" type="audio/mpeg">
-          <source
-            src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"
-            type="audio/mpeg">
-        </audio>
-
-        <!-- 2. Member Mahasiswa Button / Badge Container ("Halo, faqih" & Tombol "Ganti Akun") -->
-        <div class="member-header-wrap" id="memberHeaderWrap">
-          <button class="member-btn" id="memberBtn" aria-label="Akun Member Mahasiswa"
-            title="Daftar / Login Member Mahasiswa (Diskon 10%)">
-            <span class="member-btn-icon" id="memberBtnIcon">🎓</span>
-            <span class="member-btn-text" id="memberBtnText">Daftar / Login Member</span>
-            <span class="member-btn-badge" id="memberBtnBadge" style="display:none;">10%</span>
-          </button>
-          <button class="member-switch-btn" id="memberSwitchBtn" style="display:none;"
-            title="Ganti Akun / Logout Member" aria-label="Ganti Akun">
-            <span>🔄</span><span class="switch-btn-text">Ganti Akun</span>
-          </button>
-        </div>
-
-        <!-- Mobile Hamburger Button -->
-        <button class="mobile-toggle-btn" id="mobileToggleBtn" aria-label="Buka Menu Navigasi">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-      </div>
+      <!-- CTA Button -->
+      <a href="login.php" class="btn-dashboard-nav">
+        <span>Masuk Dashboard</span>
+        <span>→</span>
+      </a>
     </div>
   </header>
 
   <!-- ===================================================
-       MOBILE NAVIGATION DRAWER
-       =================================================== -->
-  <div class="mobile-nav-backdrop" id="mobileNavBackdrop"></div>
-  <aside class="mobile-nav-drawer" id="mobileNavDrawer" aria-label="Menu Mobile">
-    <div class="drawer-header">
-      <div class="brand-text-wrap">
-        <span class="brand-title">KOPI MAHASISWA</span>
-        <span class="brand-tagline">Campus Coffee Shop</span>
-      </div>
-      <button class="drawer-close-btn" id="drawerCloseBtn" aria-label="Tutup Menu">✕</button>
-    </div>
-
-    <ul class="drawer-menu">
-      <li><a href="#beranda" class="drawer-link active">☕ Beranda</a></li>
-      <li><a href="#tentang" class="drawer-link">🎓 Mengapa Kami</a></li>
-      <li><a href="#menu" class="drawer-link">📋 Menu Favorit</a></li>
-      <li><a href="#kontak" class="drawer-link">📍 Lokasi & Kontak</a></li>
-      <li>
-        <a href="javascript:void(0)" class="drawer-link" id="drawerAiBaristaBtn"
-          style="color: var(--caramel-dark); font-weight: 700;">
-          ✨ Barista Virtual Rekomendasi
-        </a>
-      </li>
-      <li>
-        <a href="javascript:void(0)" class="drawer-link" id="drawerMemberBtn"
-          style="color: var(--coffee-900); font-weight: 700;">
-          <span id="drawerMemberIcon">🎓</span> <span id="drawerMemberText">Daftar / Login Member</span> <span
-            class="nav-badge" id="drawerMemberBadge" style="background:#10B981;">Diskon 10%</span>
-        </a>
-      </li>
-      <li id="drawerLogoutItem" style="display: none;">
-        <a href="javascript:void(0)" class="drawer-link" id="drawerMemberLogoutBtn"
-          style="color: #DC2626; font-weight: 700;">
-          🔄 Ganti Akun / Logout
-        </a>
-      </li>
-      <li>
-        <a href="javascript:void(0)" class="drawer-link" id="drawerHistoryBtn">
-          📜 Riwayat Pesanan (<span id="drawerHistoryCount">0</span>)
-        </a>
-      </li>
-    </ul>
-
-    <div style="margin-top: auto; padding-top: 24px; border-top: 1px dashed var(--border-subtle);">
-      <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">
-        Buka Setiap Hari: 08.00 - 23.00 WIB
-      </p>
-    </div>
-  </aside>
-
-  <!-- ===================================================
-       HERO SECTION
+       HERO SECTION (SEPERTI DI FOTO REFERENSI)
        =================================================== -->
   <section class="hero-section" id="beranda">
-    <div class="container hero-grid">
-      <!-- Left Column: Hero Content -->
-      <div class="hero-content">
-        <div class="hero-tag-wrap">
-          <span class="comic-badge">☕ #1 Kopi Kampus</span>
-          <span class="hero-handwrite">Freshly brewed daily ~</span>
-        </div>
-
-        <h1 class="hero-title">
-          Ngopi, Kuliah, <span class="highlight">Gas!</span>
-        </h1>
-
-        <p class="hero-subtitle">
-          Kopi yang nemenin setiap tugas, kelas, dan cerita mahasiswa. Racikan pas, harga bersahabat, rasa nikmat bikin
-          semangat belajar terus on-fire!
-        </p>
-
-        <!-- CTA Buttons -->
-        <div class="hero-cta-group">
-          <a href="#menu" class="btn-primary">
-            <span>Pesan Sekarang</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-          </a>
-          <button class="btn-secondary" id="heroAiBtn" style="display: inline-flex; align-items: center; gap: 8px;">
-            <span>✨ Tanya Barista Virtual</span>
-          </button>
-        </div>
-
-        <!-- Hero Perks / Highlights -->
-        <div class="hero-perks">
-          <div class="perk-item">
-            <span class="perk-icon">☕</span>
-            <span>100% Biji Pilihan</span>
-          </div>
-          <div class="perk-item">
-            <span class="perk-icon">🎓</span>
-            <span>Harga Ramah Mahasiswa</span>
-          </div>
-          <div class="perk-item">
-            <span class="perk-icon">⚡</span>
-            <span>Siap Nemenin Nugas</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Column: Hero Art & Comic Floating Badges -->
-      <div class="hero-visual-side">
-        <div class="hero-art-container">
-          <img src="assets/images/hero.jpg" alt="Mahasiswa sedang nugas sambil menikmati Kopi Mahasiswa"
-            class="hero-art-img">
-
-          <!-- Comic Floating Badges -->
-          <div class="comic-bubble hero-floating-bubble-1">
-            ☕ Diskon nugas 15%!
-          </div>
-          <div class="comic-badge hero-floating-bubble-2">
-            ✨ Teman Melek Deadline!
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================================================
-       SECTION: MENGAPA KOPI MAHASISWA?
-       =================================================== -->
-  <section class="why-section" id="tentang">
     <div class="container">
-      <div class="section-header-center">
-        <span class="section-pretitle">Kenapa Pilih Kami?</span>
-        <h2 class="section-title">Mengapa Kopi Mahasiswa?</h2>
-        <p class="section-desc">
-          Didesain spesial untuk menemani hari-hari perkuliahanmu dengan vibes yang hangat dan bersahabat.
-        </p>
-      </div>
+      <div class="hero-grid">
+        
+        <!-- Left Column: Headline & Action -->
+        <div class="hero-content">
+          <div class="pill-badge">
+            <span class="pill-dot"></span>
+            <span>Platform Pengelolaan & Pemesanan Kafe</span>
+          </div>
 
-      <div class="why-grid">
-        <!-- Point 1: Teman Ngopi -->
-        <div class="why-card">
-          <div class="why-icon-wrap">☕</div>
-          <h3 class="why-title">Teman Ngopi</h3>
-          <p class="why-text">Kopi untuk menemani segala aktivitas kampus, dari diskusi kelompok santai hingga begadang
-            revisi.</p>
-        </div>
+          <h1 class="hero-heading">
+            Kelola Usaha Lebih Teratur.<br>
+            Kembangkan Bisnis Lebih Terarah.
+          </h1>
 
-        <!-- Point 2: Cocok untuk Mahasiswa -->
-        <div class="why-card">
-          <div class="why-icon-wrap">🎓</div>
-          <h3 class="why-title">Cocok untuk Mahasiswa</h3>
-          <p class="why-text">Menu dibuat dengan konsep yang dekat dengan kehidupan mahasiswa dan ramah di kantong.</p>
-        </div>
-
-        <!-- Point 3: Praktis -->
-        <div class="why-card">
-          <div class="why-icon-wrap">⚡</div>
-          <h3 class="why-title">Praktis</h3>
-          <p class="why-text">Pilih menu dengan cepat dan mudah tanpa antre lama saat jeda antar jam kuliah.</p>
-        </div>
-
-        <!-- Point 4: Digital -->
-        <div class="why-card">
-          <div class="why-icon-wrap">💻</div>
-          <h3 class="why-title">Digital</h3>
-          <p class="why-text">Pemesanan dilakukan melalui sistem digital modern yang responsif dan user-friendly.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================================================
-       PRODUCT CATALOG SECTION
-       =================================================== -->
-  <section class="catalog-section" id="menu">
-    <div class="container">
-      <!-- Section Header -->
-      <div class="catalog-header">
-        <span class="catalog-pretitle">
-          <span class="doodle-sparkle">✨</span> Rekomendasi Hari Ini
-        </span>
-        <h2 class="catalog-title">Menu Favorit Mahasiswa</h2>
-        <p class="catalog-subtitle">Pilihan kopi dan camilan untuk menemani aktivitasmu.</p>
-      </div>
-
-      <!-- Controls: Category Filter & Search -->
-      <div class="catalog-controls">
-        <!-- Category Filter Pills -->
-        <div class="category-filter-bar" role="tablist" aria-label="Filter Kategori Menu">
-          <button class="category-btn active" data-category="all" role="tab" aria-selected="true">
-            <span>Semua</span>
-            <span class="category-badge-count">16</span>
-          </button>
-          <button class="category-btn" data-category="kopi" role="tab" aria-selected="false">
-            <span>☕ Kopi</span>
-            <span class="category-badge-count">5</span>
-          </button>
-          <button class="category-btn" data-category="non-kopi" role="tab" aria-selected="false">
-            <span>🍵 Non-Kopi</span>
-            <span class="category-badge-count">4</span>
-          </button>
-          <button class="category-btn" data-category="makanan" role="tab" aria-selected="false">
-            <span>🍞 Makanan</span>
-            <span class="category-badge-count">4</span>
-          </button>
-          <button class="category-btn" data-category="snack" role="tab" aria-selected="false">
-            <span>🥐 Snack</span>
-            <span class="category-badge-count">3</span>
-          </button>
-        </div>
-
-        <!-- Search Bar -->
-        <div class="search-box-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="searchInput" class="search-input"
-            placeholder="Cari menu favoritmu (contoh: kopi susu, matcha, roti)..." aria-label="Cari menu">
-          <button id="searchClearBtn" class="search-clear-btn" aria-label="Hapus pencarian">✕</button>
-        </div>
-      </div>
-
-      <!-- Product Grid with Realistic High-Quality Food Photography -->
-      <div class="product-grid" id="productGrid">
-        <!-- 1. Kopi Susu Mahasiswa -->
-        <article class="product-card" data-id="kopi-susu">
-          <div class="product-image-wrap">
-            <img src="images/kopi-susu.jpg" alt="Kopi Susu Mahasiswa" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/kopi-susu.jpg';">
-            <span class="product-badge-tag">Best Seller 🔥</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.9</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Kopi</span>
-              <span class="stock-indicator stock-normal">Stok: 20</span>
-            </div>
-            <h3 class="product-name">Kopi Susu Mahasiswa</h3>
-            <p class="product-desc">Espresso robusta-arabica blend dipadu susu creamy dan gula aren organik. Teman setia
-              kuliah!</p>
-            <div class="product-tags"><span class="tag-pill">Es</span><span class="tag-pill">Aren</span><span
-                class="tag-pill">Manis</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 15.000</span>
-              </div>
-              <button class="btn-add-product" data-id="kopi-susu" data-name="Kopi Susu Mahasiswa"
-                aria-label="Tambah Kopi Susu Mahasiswa ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 2. Americano / Kopi Hitam -->
-        <article class="product-card" data-id="americano">
-          <div class="product-image-wrap">
-            <img src="images/americano.jpg" alt="Americano / Kopi Hitam" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/americano.jpg';">
-            <span class="product-badge-tag">Extra Strong ⚡</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.8</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Kopi</span>
-              <span class="stock-indicator stock-normal">Stok: 15</span>
-            </div>
-            <h3 class="product-name">Americano / Kopi Hitam</h3>
-            <p class="product-desc">Double shot espresso dengan air mineral dingin/hangat. Dijamin melek ngerjain revisi
-              skripsi.</p>
-            <div class="product-tags"><span class="tag-pill">No Sugar</span><span class="tag-pill">Strong</span><span
-                class="tag-pill">Pilihan Hangat/Dingin</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 12.000</span>
-              </div>
-              <button class="btn-add-product" data-id="americano" data-name="Americano / Kopi Hitam"
-                aria-label="Tambah Americano / Kopi Hitam ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 3. Cappuccino -->
-        <article class="product-card" data-id="cappuccino">
-          <div class="product-image-wrap">
-            <img src="images/cappuccino.jpg" alt="Cappuccino" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/cappuccino.jpg';">
-            <span class="product-badge-tag">Favorit ☕</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.8</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Kopi</span>
-              <span class="stock-indicator stock-normal">Stok: 12</span>
-            </div>
-            <h3 class="product-name">Cappuccino</h3>
-            <p class="product-desc">Espresso mantap dengan foam susu tebal dan taburan cocoa powder aromatik.</p>
-            <div class="product-tags"><span class="tag-pill">Foamy</span><span class="tag-pill">Bold</span><span
-                class="tag-pill">Latte Art</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 18.000</span>
-              </div>
-              <button class="btn-add-product" data-id="cappuccino" data-name="Cappuccino"
-                aria-label="Tambah Cappuccino ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 4. Caffe Latte Santai -->
-        <article class="product-card" data-id="cafe-latte">
-          <div class="product-image-wrap">
-            <img src="images/latte.jpg" alt="Caffe Latte Santai" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/latte.jpg';">
-            <span class="product-badge-tag">Smooth ✨</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.7</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Kopi</span>
-              <span class="stock-indicator stock-normal">Stok: 14</span>
-            </div>
-            <h3 class="product-name">Caffe Latte Santai</h3>
-            <p class="product-desc">Paduan seimbang espresso dan steamed milk yang halus. Pas dinikmati sambil diskusi
-              kelompok.</p>
-            <div class="product-tags"><span class="tag-pill">Milky</span><span class="tag-pill">Smooth</span><span
-                class="tag-pill">Latte Art</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 18.000</span>
-              </div>
-              <button class="btn-add-product" data-id="cafe-latte" data-name="Caffe Latte Santai"
-                aria-label="Tambah Caffe Latte Santai ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 5. Mocha Deadline -->
-        <article class="product-card" data-id="mocha">
-          <div class="product-image-wrap">
-            <img src="images/chocolate.jpg" alt="Mocha Deadline" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/chocolate.jpg';">
-            <span class="product-badge-tag">Energy Booster 🍫</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.9</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Kopi</span>
-              <span class="stock-indicator stock-normal">Stok: 10</span>
-            </div>
-            <h3 class="product-name">Mocha Deadline</h3>
-            <p class="product-desc">Perpaduan kopi espresso pekat dan dark chocolate Belgia, manis legit penambah
-              semangat nugas.</p>
-            <div class="product-tags"><span class="tag-pill">Choco Coffee</span><span class="tag-pill">Rich</span><span
-                class="tag-pill">Sweet</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 20.000</span>
-              </div>
-              <button class="btn-add-product" data-id="mocha" data-name="Mocha Deadline"
-                aria-label="Tambah Mocha Deadline ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 6. Chocolate / Cokelat -->
-        <article class="product-card" data-id="chocolate">
-          <div class="product-image-wrap">
-            <img src="images/chocolate.jpg" alt="Chocolate / Cokelat" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/chocolate.jpg';">
-            <span class="product-badge-tag">Mood Booster 🍫</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.8</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Non-Kopi</span>
-              <span class="stock-indicator stock-normal">Stok: 16</span>
-            </div>
-            <h3 class="product-name">Chocolate / Cokelat</h3>
-            <p class="product-desc">Cokelat murni premium dipadukan susu segar dingin/panas, legit dan melegakan
-              pikiran.</p>
-            <div class="product-tags"><span class="tag-pill">Pure Cocoa</span><span class="tag-pill">Creamy</span><span
-                class="tag-pill">Kids Friendly</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 16.000</span>
-              </div>
-              <button class="btn-add-product" data-id="chocolate" data-name="Chocolate / Cokelat"
-                aria-label="Tambah Chocolate / Cokelat ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 7. Matcha Latte -->
-        <article class="product-card" data-id="matcha-latte">
-          <div class="product-image-wrap">
-            <img src="images/matcha.jpg" alt="Matcha Latte" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/matcha.jpg';">
-            <span class="product-badge-tag">Top Choice 🍃</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.9</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Non-Kopi</span>
-              <span class="stock-indicator stock-normal">Stok: 12</span>
-            </div>
-            <h3 class="product-name">Matcha Latte</h3>
-            <p class="product-desc">Matcha Uji Jepang asli dengan susu creamy. Rasa earthy autentik yang menenangkan.
-            </p>
-            <div class="product-tags"><span class="tag-pill">Authentic Matcha</span><span
-                class="tag-pill">Creamy</span><span class="tag-pill">Anti-Stress</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 18.000</span>
-              </div>
-              <button class="btn-add-product" data-id="matcha-latte" data-name="Matcha Latte"
-                aria-label="Tambah Matcha Latte ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 8. Taro Latte Creamy -->
-        <article class="product-card" data-id="taro-latte">
-          <div class="product-image-wrap">
-            <img src="images/taro.jpg" alt="Taro Latte Creamy" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/taro.jpg';">
-            <span class="product-badge-tag">Unik 🍠</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.7</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Non-Kopi</span>
-              <span class="stock-indicator stock-normal">Stok: 8</span>
-            </div>
-            <h3 class="product-name">Taro Latte Creamy</h3>
-            <p class="product-desc">Rasa taro manis wangi dengan warna ungu estetik dan kelembutan susu murni.</p>
-            <div class="product-tags"><span class="tag-pill">Sweet Taro</span><span class="tag-pill">Estetik</span><span
-                class="tag-pill">Milky</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 16.000</span>
-              </div>
-              <button class="btn-add-product" data-id="taro-latte" data-name="Taro Latte Creamy"
-                aria-label="Tambah Taro Latte Creamy ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 9. Fresh Lemon Tea -->
-        <article class="product-card" data-id="lemon-tea">
-          <div class="product-image-wrap">
-            <img src="images/lemon-tea.jpg" alt="Fresh Lemon Tea" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/lemon-tea.jpg';">
-            <span class="product-badge-tag">Segar 🍋</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.7</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Non-Kopi</span>
-              <span class="stock-indicator stock-normal">Stok: 18</span>
-            </div>
-            <h3 class="product-name">Fresh Lemon Tea</h3>
-            <p class="product-desc">Seduhan teh pilihan dengan perasan lemon asli. Dingin, asam segar, langsung balikin
-              fokus.</p>
-            <div class="product-tags"><span class="tag-pill">Citrus Fresh</span><span
-                class="tag-pill">Dingin</span><span class="tag-pill">Hemat</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 10.000</span>
-              </div>
-              <button class="btn-add-product" data-id="lemon-tea" data-name="Fresh Lemon Tea"
-                aria-label="Tambah Fresh Lemon Tea ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 10. Roti Bakar -->
-        <article class="product-card" data-id="roti-bakar">
-          <div class="product-image-wrap">
-            <img src="images/roti-bakar.jpg" alt="Roti Bakar" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/roti-bakar.jpg';">
-            <span class="product-badge-tag">Ngemil Kenyang 🍞</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.9</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Makanan</span>
-              <span class="stock-indicator stock-normal">Stok: 15</span>
-            </div>
-            <h3 class="product-name">Roti Bakar</h3>
-            <p class="product-desc">Roti bakar tebal renyah di luar, bertabur keju cheddar melimpah dan lumeran coklat
-              manis.</p>
-            <div class="product-tags"><span class="tag-pill">Crispy</span><span class="tag-pill">Cheesy</span><span
-                class="tag-pill">Porsi Pas</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 14.000</span>
-              </div>
-              <button class="btn-add-product" data-id="roti-bakar" data-name="Roti Bakar"
-                aria-label="Tambah Roti Bakar ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 11. Kentang Goreng -->
-        <article class="product-card" data-id="kentang-goreng">
-          <div class="product-image-wrap">
-            <img src="images/kentang-goreng.jpg" alt="Kentang Goreng" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/kentang-goreng.jpg';">
-            <span class="product-badge-tag">Best Snack 🍟</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.8</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Makanan</span>
-              <span class="stock-indicator stock-normal">Stok: 14</span>
-            </div>
-            <h3 class="product-name">Kentang Goreng</h3>
-            <p class="product-desc">French fries garing gurih disajikan dengan saus sambal cocolan dan taburan bumbu
-              rahasia.</p>
-            <div class="product-tags"><span class="tag-pill">Crispy</span><span class="tag-pill">Saus Sambal</span><span
-                class="tag-pill">Sharing</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 12.000</span>
-              </div>
-              <button class="btn-add-product" data-id="kentang-goreng" data-name="Kentang Goreng"
-                aria-label="Tambah Kentang Goreng ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 12. Mie Dok-Dok Nugas -->
-        <article class="product-card" data-id="mie-dokdok">
-          <div class="product-image-wrap">
-            <img src="images/mie-dokdok.jpg" alt="Mie Dok-Dok Nugas" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/mie-dokdok.jpg';">
-            <span class="product-badge-tag">Spesial Malam 🍜</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.9</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Makanan</span>
-              <span class="stock-indicator stock-normal">Stok: 10</span>
-            </div>
-            <h3 class="product-name">Mie Dok-Dok Nugas</h3>
-            <p class="product-desc">Mie kuah kental gurih khas warkop modern berpadu telur kocok, sayuran segar, dan
-              cabai rawit.</p>
-            <div class="product-tags"><span class="tag-pill">Hangat</span><span class="tag-pill">Pedas Gurih</span><span
-                class="tag-pill">Telur</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 15.000</span>
-              </div>
-              <button class="btn-add-product" data-id="mie-dokdok" data-name="Mie Dok-Dok Nugas"
-                aria-label="Tambah Mie Dok-Dok Nugas ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 13. Pisang Coklat (Piscok) -->
-        <article class="product-card" data-id="pisang-coklat">
-          <div class="product-image-wrap">
-            <img src="images/pisang-coklat.jpg" alt="Pisang Coklat (Piscok)" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/pisang-coklat.jpg';">
-            <span class="product-badge-tag">Crispy Lumer 🍌</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.8</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Makanan</span>
-              <span class="stock-indicator stock-low">⚡ Sisa 4 Porsi!</span>
-            </div>
-            <h3 class="product-name">Pisang Coklat (Piscok)</h3>
-            <p class="product-desc">Kulit lumpia renyah membungkus pisang manis dan lelehan dark chocolate nikmat.</p>
-            <div class="product-tags"><span class="tag-pill">Piscok</span><span class="tag-pill">Crispy</span><span
-                class="tag-pill">Sweet</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 12.000</span>
-              </div>
-              <button class="btn-add-product" data-id="pisang-coklat" data-name="Pisang Coklat (Piscok)"
-                aria-label="Tambah Pisang Coklat (Piscok) ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 14. Donat Kampus Glazed -->
-        <article class="product-card" data-id="donat-kampus">
-          <div class="product-image-wrap">
-            <img src="images/donat.jpg" alt="Donat Kampus Glazed" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/donat.jpg';">
-            <span class="product-badge-tag">Harga Mahasiswa 🍩</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.7</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Snack</span>
-              <span class="stock-indicator stock-normal">Stok: 12</span>
-            </div>
-            <h3 class="product-name">Donat Kampus Glazed</h3>
-            <p class="product-desc">Donat kentang super empuk dengan topping cokelat leleh dan taburan meses
-              warna-warni.</p>
-            <div class="product-tags"><span class="tag-pill">Soft</span><span class="tag-pill">Sweet</span><span
-                class="tag-pill">Camilan Ringan</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 8.000</span>
-              </div>
-              <button class="btn-add-product" data-id="donat-kampus" data-name="Donat Kampus Glazed"
-                aria-label="Tambah Donat Kampus Glazed ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 15. Choco Chip Cookies -->
-        <article class="product-card" data-id="cookies">
-          <div class="product-image-wrap">
-            <img src="images/cookies.jpg" alt="Choco Chip Cookies" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/cookies.jpg';">
-            <span class="product-badge-tag">Crunchy 🍪</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.8</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Snack</span>
-              <span class="stock-indicator stock-normal">Stok: 15</span>
-            </div>
-            <h3 class="product-name">Choco Chip Cookies</h3>
-            <p class="product-desc">Kue kering renyah harum mentega dengan limpahan dark choco chunks lezat.</p>
-            <div class="product-tags"><span class="tag-pill">Butter</span><span class="tag-pill">Choco
-                Chunks</span><span class="tag-pill">Fresh Bake</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 10.000</span>
-              </div>
-              <button class="btn-add-product" data-id="cookies" data-name="Choco Chip Cookies"
-                aria-label="Tambah Choco Chip Cookies ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <!-- 16. Butter Croissant -->
-        <article class="product-card" data-id="croissant">
-          <div class="product-image-wrap">
-            <img src="images/croissant.jpg" alt="Butter Croissant" class="product-img" loading="lazy"
-              onerror="this.onerror=null; this.src='images/croissant.jpg';">
-            <span class="product-badge-tag">Flaky & Buttery 🥐</span>
-            <div class="product-rating-pill">
-              <span class="star-icon">★</span>
-              <span>4.8</span>
-            </div>
-          </div>
-          <div class="product-body">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-              <span class="product-category-name">Snack</span>
-              <span class="stock-indicator stock-normal">Stok: 6</span>
-            </div>
-            <h3 class="product-name">Butter Croissant</h3>
-            <p class="product-desc">Pastry ala Prancis dengan layer renyah di luar dan lembut wangi butter di dalam.</p>
-            <div class="product-tags"><span class="tag-pill">French Pastry</span><span class="tag-pill">Golden
-                Flaky</span><span class="tag-pill">Wangi</span></div>
-            <div class="product-footer">
-              <div class="product-price-wrap">
-                <span class="price-label">Harga</span>
-                <span class="product-price">Rp 14.000</span>
-              </div>
-              <button class="btn-add-product" data-id="croissant" data-name="Butter Croissant"
-                aria-label="Tambah Butter Croissant ke keranjang">
-                <span class="btn-text">+ Tambah</span>
-              </button>
-            </div>
-          </div>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================================================
-       CAMPUS QUOTE / COMIC BANNER
-       =================================================== -->
-  <section class="campus-banner-section">
-    <div class="container">
-      <div class="campus-banner-box">
-        <div>
-          <span class="comic-badge" style="margin-bottom: 14px;">🎓 Campus Vibes</span>
-          <h3 class="banner-quote">"Tugas numpuk jangan pusing, seruput dulu Kopi Mahasiswa!"</h3>
-          <p class="banner-sub">
-            Tempat ternyaman buat diskusi santai, cari inspirasi skripsi, atau sekadar recharge energi bareng teman
-            seangkatan.
+          <p class="hero-description">
+            Satu sistem terintegrasi untuk membantu memesan kopi favorit, memantau persediaan stok, dan mencatat transaksi penjualan. Menghadirkan kemudahan belanja untuk Member dan efisiensi operasional bagi Admin & Owner.
           </p>
+
+          <div class="hero-actions">
+            <a href="login.php" class="btn-hero-primary">
+              <span>Masuk Dashboard</span>
+              <span>→</span>
+            </a>
+            <a href="#fitur" class="btn-hero-secondary">
+              <span>Pelajari Fitur</span>
+            </a>
+          </div>
         </div>
 
-        <div class="banner-features-list">
-          <div class="banner-feature-item">
-            <span>⚡ Colokan Listrik Tiap Meja</span>
+        <!-- Right Column: System Preview (Menyerupai Gambar Referensi) -->
+        <div class="hero-preview">
+          <div class="preview-card">
+            
+            <div class="preview-top-row">
+              <span class="preview-tag">System Preview</span>
+              <span class="preview-badge-pill">Multi-Role System</span>
+            </div>
+
+            <h2 class="preview-title">Dashboard Kopi Mahasiswa</h2>
+            <p class="preview-subtitle">Ringkasan pengelolaan usaha & pemesanan</p>
+
+            <!-- 2 Mini Stat Cards -->
+            <div class="preview-stats-grid">
+              <div class="stat-mini-box">
+                <div class="stat-mini-header">
+                  <span>Data Produk</span>
+                  <span>☕</span>
+                </div>
+                <div class="stat-mini-title">18+ Menu</div>
+                <div class="stat-mini-desc">Kopi & Snack Terlaris</div>
+              </div>
+
+              <div class="stat-mini-box">
+                <div class="stat-mini-header">
+                  <span>Persediaan</span>
+                  <span>📦</span>
+                </div>
+                <div class="stat-mini-title">Real-Time</div>
+                <div class="stat-mini-desc">Pantau Ketersediaan Stok</div>
+              </div>
+            </div>
+
+            <!-- Modul Pengelolaan List -->
+            <div class="module-list-box">
+              <div class="module-list-header">
+                <span class="module-list-title">Modul Pengelolaan</span>
+                <span class="module-list-badge">3 Akses Terpadu</span>
+              </div>
+
+              <!-- Module 1: Member -->
+              <div class="module-item">
+                <div class="module-item-left">
+                  <div class="module-icon">🎓</div>
+                  <div>
+                    <div class="module-name">Akses Member (Pelanggan)</div>
+                    <div class="module-desc">Pesan menu, diskon 10%, & riwayat pesanan</div>
+                  </div>
+                </div>
+                <span class="module-num">01</span>
+              </div>
+
+              <!-- Module 2: Admin -->
+              <div class="module-item">
+                <div class="module-item-left">
+                  <div class="module-icon">⚙️</div>
+                  <div>
+                    <div class="module-name">Akses Kasir & Admin</div>
+                    <div class="module-desc">Kelola pesanan, stok, & asisten KopiAI</div>
+                  </div>
+                </div>
+                <span class="module-num">02</span>
+              </div>
+
+              <!-- Module 3: Owner -->
+              <div class="module-item">
+                <div class="module-item-left">
+                  <div class="module-icon">👑</div>
+                  <div>
+                    <div class="module-name">Akses Dashboard Owner</div>
+                    <div class="module-desc">Pantau omset, AOV, analitik, & margin profit</div>
+                  </div>
+                </div>
+                <span class="module-num">03</span>
+              </div>
+
+            </div>
+
           </div>
-          <div class="banner-feature-item">
-            <span>📶 High-Speed WiFi Kampus</span>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================
+       FEATURES & MULTI-ROLE BREAKDOWN
+       =================================================== -->
+  <section class="features-section" id="fitur">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Akses Terisolasi & Aman</span>
+        <h2 class="section-title">Pilih Peran & Masuk ke Dashboard</h2>
+        <p class="section-desc">Setiap pengguna memiliki antarmuka khusus sesuai dengan hak akses masing-masing.</p>
+      </div>
+
+      <div class="roles-grid">
+        <!-- Role 1: Member -->
+        <div class="role-card">
+          <div>
+            <span class="role-card-badge badge-member">Role: Member Mahasiswa</span>
+            <h3 class="role-title">Pemesanan & Member</h3>
+            <p class="role-desc">Khusus pelanggan kafe untuk memilih menu kopi favorit, promo khusus pelajar, serta melihat riwayat pesanan personal.</p>
+            <ul class="role-features">
+              <li><span>✓</span> Diskon otomatis 10% setiap pesanan</li>
+              <li><span>✓</span> Lacak riwayat pesanan & status nota</li>
+              <li><span>✓</span> Notifikasi WhatsApp otomatis saat login</li>
+            </ul>
           </div>
-          <div class="banner-feature-item">
-            <span>🎵 Playlist Lo-Fi Study Chill</span>
+          <a href="login.php?role=member" class="btn-role-login">Masuk Sebagai Member →</a>
+        </div>
+
+        <!-- Role 2: Admin -->
+        <div class="role-card">
+          <div>
+            <span class="role-card-badge badge-admin">Role: Admin & Kasir</span>
+            <h3 class="role-title">Portal Operasional</h3>
+            <p class="role-desc">Pusat kontrol kasir untuk memproses pesanan aktif, update ketersediaan stok, data member, dan konsultasi AI Barista.</p>
+            <ul class="role-features">
+              <li><span>✓</span> Kasir Point of Sale (POS) & struk otomatis</li>
+              <li><span>✓</span> Manajemen stok real-time & peringatan kritis</li>
+              <li><span>✓</span> Chatbot bisnis KopiAI (OpenRouter / Gemini)</li>
+            </ul>
           </div>
+          <a href="login.php?role=admin" class="btn-role-login">Masuk Sebagai Admin →</a>
+        </div>
+
+        <!-- Role 3: Owner -->
+        <div class="role-card">
+          <div>
+            <span class="role-card-badge badge-owner">Role: Pemilik Kafe</span>
+            <h3 class="role-title">Dashboard Owner</h3>
+            <p class="role-desc">Tinjauan level eksekutif mengenai kesehatan finansial kafe, pertumbuhan omset, performa menu terlaris, dan proyeksi.</p>
+            <ul class="role-features">
+              <li><span>✓</span> Real-time grafik omset & Average Order Value</li>
+              <li><span>✓</span> Ranking menu terlaris & margin laba</li>
+              <li><span>✓</span> Ekspor & cetak ringkasan eksekutif</li>
+            </ul>
+          </div>
+          <a href="login.php?role=owner" class="btn-role-login">Masuk Sebagai Owner →</a>
         </div>
       </div>
     </div>
@@ -917,786 +789,11 @@
   <!-- ===================================================
        FOOTER
        =================================================== -->
-  <footer class="footer-section" id="kontak">
+  <footer class="landing-footer">
     <div class="container">
-      <div class="footer-grid">
-        <!-- Column 1: Brand -->
-        <div class="footer-brand">
-          <div class="brand-logo" style="margin-bottom: 8px;">
-            <div class="brand-icon">☕</div>
-            <div class="brand-text-wrap">
-              <span class="brand-title">KOPI MAHASISWA</span>
-              <span class="brand-tagline">Teman Nugas & Kuliah</span>
-            </div>
-          </div>
-          <p class="footer-desc">
-            "Teman ngopi di sela-sela kesibukan kampus." Menyajikan seduhan kopi berkualitas dan camilan lezat dengan
-            suasana hangat dan bersahabat.
-          </p>
-          <div class="social-links">
-            <a href="#" class="social-btn" aria-label="Instagram">📸</a>
-            <a href="#" class="social-btn" aria-label="TikTok">🎵</a>
-            <a href="https://wa.me/6285173022407" target="_blank" rel="noopener" class="social-btn"
-              aria-label="WhatsApp">💬</a>
-          </div>
-          <!-- Creator Watermark Credit (Kolom Kiri Bawah Ikon Sosial) -->
-          <div class="footer-creator-credit"
-            style="margin-top: 14px; font-size: 0.82rem; color: #A89080; display: flex; align-items: center; gap: 5px;">
-            <span>Created with ☕ by</span>
-            <strong style="color: #F59E0B; font-weight: 700;">Fathialaziz</strong>
-          </div>
-        </div>
-
-        <!-- Column 2: Menu Cepat -->
-        <div>
-          <h4 class="footer-heading">Menu Favorit</h4>
-          <ul class="footer-links-list">
-            <li><a href="#menu" class="footer-link">Kopi Susu Mahasiswa</a></li>
-            <li><a href="#menu" class="footer-link">Americano Melek</a></li>
-            <li><a href="#menu" class="footer-link">Matcha Latte Cozy</a></li>
-            <li><a href="#menu" class="footer-link">Roti Bakar Coklat Keju</a></li>
-            <li><a href="#menu" class="footer-link">Butter Croissant</a></li>
-          </ul>
-        </div>
-
-        <!-- Column 3: Jam Operasional -->
-        <div>
-          <h4 class="footer-heading">Jam Buka</h4>
-          <ul class="footer-links-list">
-            <li><span class="footer-link">Senin - Jumat: 08.00 - 23.00</span></li>
-            <li><span class="footer-link">Sabtu - Minggu: 09.00 - 24.00</span></li>
-            <li><span class="footer-link">Weekend Nugas: Ready!</span></li>
-            <li style="margin-top: 8px;">
-              <a href="owner.html" class="footer-link"
-                style="color: #F59E0B; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                <span>👑</span><span>Portal Owner Kafe</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Column 4: Kontak & Lokasi -->
-        <div>
-          <h4 class="footer-heading">Lokasi & Kontak</h4>
-          <ul class="footer-contact-list">
-            <li class="footer-contact-item">
-              <span>📍</span>
-              <span>Jl. Kampus Merdeka No. 45, Dekat Gedung Rektorat</span>
-            </li>
-            <li class="footer-contact-item">
-              <span>📞</span>
-              <a href="https://wa.me/6285173022407" target="_blank" rel="noopener"
-                style="color: inherit; text-decoration: none; font-weight: 600;">+62 851-7302-2407</a>
-            </li>
-            <li class="footer-contact-item">
-              <span>✉️</span>
-              <span>halo@kopimahasiswa.id</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Footer Bottom -->
-      <div class="footer-bottom">
-        <div class="footer-copy">
-          <span>© 2026 <strong>KOPI MAHASISWA</strong>. All rights reserved.</span>
-        </div>
-        <div class="footer-bottom-links">
-          <a href="admin.html" class="footer-link">⚙️ Portal Admin</a>
-          <span class="footer-link-divider">•</span>
-          <a href="owner.html" class="footer-link footer-owner-badge" id="footerOwnerLink">👑 Dashboard Owner
-            (Analytics)</a>
-          <span class="footer-link-divider">•</span>
-          <a href="#beranda" class="footer-link">Kembali ke Atas ↑</a>
-        </div>
-      </div>
-
+      <p>© 2026 <strong>KOPI MAHASISWA</strong>. Teman Nugas & Kafe Digital. All rights reserved.</p>
     </div>
   </footer>
 
-  <!-- ===================================================
-       FLOATING CART BUTTON (POJOK KANAN BAWAH)
-       =================================================== -->
-  <button type="button" class="floating-cart-btn" id="floatingCartBtn" aria-label="Buka Keranjang Belanja"
-    title="Buka Keranjang Belanja">
-    <div class="floating-cart-icon-wrap">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="9" cy="21" r="1"></circle>
-        <circle cx="20" cy="21" r="1"></circle>
-        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-      </svg>
-    </div>
-    <span class="floating-cart-counter cart-counter" id="floatingCartCounter">0</span>
-  </button>
-
-  <!-- ===================================================
-       SHOPPING CART SLIDE-OVER DRAWER
-       =================================================== -->
-  <div class="cart-drawer-backdrop" id="cartDrawerBackdrop"></div>
-  <aside class="cart-drawer" id="cartDrawer" aria-label="Keranjang Belanja">
-    <div class="cart-drawer-header">
-      <div class="cart-header-title-wrap">
-        <span class="brand-icon" style="width: 32px; height: 32px; font-size: 0.9rem;">🛒</span>
-        <h3 class="cart-drawer-title">Keranjang Pesanan</h3>
-      </div>
-      <button class="cart-drawer-close-btn" id="cartDrawerCloseBtn" aria-label="Tutup Keranjang">✕</button>
-    </div>
-
-    <!-- Scrollable Items Area -->
-    <div class="cart-drawer-body" id="cartDrawerBody">
-      <!-- Rendered dynamically by js/app.js -->
-    </div>
-
-    <!-- Sticky Cart Footer -->
-    <div class="cart-drawer-footer" id="cartDrawerFooter">
-      <div class="cart-summary-row">
-        <span>Jumlah Item</span>
-        <span id="cartTotalItemsCount" style="font-weight: 700;">0 item</span>
-      </div>
-
-      <!-- Member Discount Breakdown Row (Dynamic) -->
-      <div class="cart-summary-row" id="cartSubtotalRow" style="display: none;">
-        <span>Subtotal Menu</span>
-        <span id="cartSubtotalAmount">Rp 0</span>
-      </div>
-      <div class="cart-summary-row" id="cartDiscountRow" style="display: none; color: #10B981; font-weight: 700;">
-        <span>🎓 Diskon Member (<span id="cartDiscountLabel">10%</span>)</span>
-        <span id="cartDiscountAmount">-Rp 0</span>
-      </div>
-
-      <!-- Member Join Callout (If not member) -->
-      <div class="cart-member-prompt" id="cartMemberPrompt" style="display: none;">
-        <span>🎓 Belum Member? <strong>Hemat 10% sekarang!</strong></span>
-        <button type="button" class="btn-join-member-link" id="cartJoinMemberBtn">Daftar Member</button>
-      </div>
-
-      <div class="cart-total-row">
-        <span class="cart-total-label">Total Bayar</span>
-        <span class="cart-total-value" id="cartTotalAmount">Rp 0</span>
-      </div>
-
-      <!-- Catatan Pesanan -->
-      <div class="cart-notes-group">
-        <label for="cartNotesInput" class="cart-notes-label">
-          <span>✏️ Catatan Khusus (Opsional):</span>
-        </label>
-        <input type="text" id="cartNotesInput" class="cart-notes-input"
-          placeholder="Contoh: Less sugar, es sedikit, pedas..." maxlength="120">
-      </div>
-
-      <!-- Primary Web Checkout Button -->
-      <button class="btn-checkout-proceed" id="checkoutProceedBtn">
-        <span>💳 Lanjut ke Pembayaran</span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-          stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
-      </button>
-
-      <button class="btn-clear-cart" id="clearCartBtn">Kosongkan Keranjang</button>
-    </div>
-  </aside>
-
-  <!-- ===================================================
-       CHECKOUT MODAL
-       =================================================== -->
-  <div class="modal-backdrop" id="checkoutModalBackdrop">
-    <div class="modal-card" id="checkoutModal">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <span style="font-size: 1.5rem;">📝</span>
-          <h3 class="modal-title">Formulir Checkout Pesanan</h3>
-        </div>
-        <button class="modal-close-btn" id="checkoutModalCloseBtn" aria-label="Tutup Checkout">✕</button>
-      </div>
-
-      <form id="checkoutForm" class="modal-body" onsubmit="return false;">
-        <!-- 1. Customer Name -->
-        <div class="form-group">
-          <label for="customerNameInput" class="form-label">
-            <span>👤 Nama Pembeli</span>
-            <span class="required-star">*</span>
-          </label>
-          <input type="text" id="customerNameInput" class="form-input"
-            placeholder="Masukkan nama panggilan / lengkap..." required autocomplete="name">
-        </div>
-
-        <!-- 2. Order Type: Dine In vs Takeaway -->
-        <div class="form-group">
-          <label class="form-label">
-            <span>📍 Tipe Pesanan</span>
-            <span class="required-star">*</span>
-          </label>
-          <div class="segmented-toggle">
-            <button type="button" class="segmented-btn active" id="orderTypeDineIn" data-type="dine-in">
-              🍽️ Dine In (Makan di Tempat)
-            </button>
-            <button type="button" class="segmented-btn" id="orderTypeTakeaway" data-type="takeaway">
-              🛍️ Takeaway (Bungkus)
-            </button>
-          </div>
-        </div>
-
-        <!-- 3. Table Number (Active for Dine In) -->
-        <div class="form-group" id="tableNumberGroup">
-          <label for="tableNumberInput" class="form-label">
-            <span>🪑 Nomor Meja</span>
-            <span class="required-star">*</span>
-          </label>
-          <input type="text" id="tableNumberInput" class="form-input" placeholder="Contoh: Meja 05" value="Meja 01">
-          <div class="table-quick-chips">
-            <span class="table-chip active">Meja 01</span>
-            <span class="table-chip">Meja 02</span>
-            <span class="table-chip">Meja 03</span>
-            <span class="table-chip">Meja 05</span>
-            <span class="table-chip">Meja 08</span>
-            <span class="table-chip">Meja 12</span>
-          </div>
-        </div>
-
-        <!-- 4. Order Notes -->
-        <div class="form-group">
-          <label for="orderNotesInput" class="form-label">
-            <span>✏️ Catatan Pesanan (Opsional)</span>
-          </label>
-          <textarea id="orderNotesInput" class="form-textarea" rows="2"
-            placeholder="Contoh: Less sugar, es sedikit, sambal dipisah..."></textarea>
-        </div>
-
-        <!-- 5. Payment Methods -->
-        <div class="form-group">
-          <label class="form-label">
-            <span>💳 Metode Pembayaran</span>
-            <span class="required-star">*</span>
-          </label>
-          <div class="payment-methods-grid">
-            <div class="payment-method-card active" id="pmQris" data-pm="QRIS">
-              <div class="pm-header">
-                <span>📱</span>
-                <span>QRIS Instant</span>
-              </div>
-              <p class="pm-desc">BCA, GoPay, OVO, ShopeePay, Dana</p>
-            </div>
-
-            <div class="payment-method-card" id="pmCash" data-pm="Tunai">
-              <div class="pm-header">
-                <span>💵</span>
-                <span>Tunai (Cash)</span>
-              </div>
-              <p class="pm-desc">Bayar langsung di kasir saat ambil pesanan</p>
-            </div>
-
-            <div class="payment-method-card" id="pmTransfer" data-pm="Transfer Bank">
-              <div class="pm-header">
-                <span>🏦</span>
-                <span>Transfer Bank</span>
-              </div>
-              <p class="pm-desc">BCA & Bank Mandiri (Verifikasi Manual)</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 6a. QRIS Simulator Box (Visible when QRIS active) -->
-        <div class="qris-simulator-box" id="qrisSimulatorBox">
-          <div class="qris-badge">SIMULASI PEMBAYARAN QRIS</div>
-          <div class="qris-qr-frame">
-            <img src="assets/images/qris_code.svg" alt="QRIS Code Kopi Mahasiswa" class="qris-qr-img">
-            <div class="qris-scan-laser"></div>
-          </div>
-          <p class="qris-helper">
-            Scan QR code di atas menggunakan e-wallet (GoPay, OVO, ShopeePay, DANA) atau Mobile Banking Anda.
-          </p>
-        </div>
-
-        <!-- 6b. Bank Transfer Box (Visible when Transfer Bank active) -->
-        <div class="bank-transfer-box" id="bankTransferBox" style="display: none;">
-          <div class="bank-box-header">
-            <span class="bank-badge">INFO REKENING PEMBAYARAN</span>
-            <p class="bank-helper-text">Silakan transfer sesuai total tagihan ke salah satu rekening resmi Kopi
-              Mahasiswa berikut:</p>
-          </div>
-          <div class="bank-accounts-list">
-            <div class="bank-card-item">
-              <div class="bank-info-col">
-                <span class="bank-name">🔵 BCA (Bank Central Asia)</span>
-                <span class="bank-number">8735 0912 34</span>
-                <span class="bank-holder">a.n. Kopi Mahasiswa</span>
-              </div>
-              <button type="button" class="btn-copy-account" data-account="8735091234"
-                aria-label="Salin nomor rekening BCA">
-                📋 Salin
-              </button>
-            </div>
-
-            <div class="bank-card-item">
-              <div class="bank-info-col">
-                <span class="bank-name">🟡 Bank Mandiri</span>
-                <span class="bank-number">137 00 2345 6789</span>
-                <span class="bank-holder">a.n. Kopi Mahasiswa</span>
-              </div>
-              <button type="button" class="btn-copy-account" data-account="1370023456789"
-                aria-label="Salin nomor rekening Mandiri">
-                📋 Salin
-              </button>
-            </div>
-          </div>
-          <p class="bank-note">
-            💡 <em>Setelah transfer, selesaikan pesanan lalu tunjukkan struk digital beserta bukti transfer ke kasir
-              saat pengambilan pesanan.</em>
-          </p>
-        </div>
-
-        <!-- 6c. Cash Info Box (Visible when Tunai active) -->
-        <div class="cash-info-box" id="cashInfoBox" style="display: none;">
-          <div class="cash-info-icon">💵</div>
-          <div class="cash-info-text">
-            <strong>Bayar Tunai di Kasir</strong>
-            <p>Silakan klik tombol <strong>"Konfirmasi Pesanan"</strong> di bawah. Anda akan mendapatkan Struk Digital
-              dengan ID Pesanan untuk ditunjukkan ke kasir saat membayar dan mengambil pesanan.</p>
-          </div>
-        </div>
-
-        <!-- 7. Order Summary Preview -->
-        <div class="checkout-order-summary">
-          <h4 class="summary-heading">Ringkasan Item Pesanan</h4>
-          <ul class="summary-items-list" id="checkoutSummaryList">
-            <!-- Populated dynamically -->
-          </ul>
-          <!-- Discount Row (Visible if Member) -->
-          <div class="checkout-discount-row" id="checkoutDiscountRow" style="display: none;">
-            <span class="discount-label" id="checkoutDiscountLabel">Diskon Member (10%):</span>
-            <span class="discount-amount" id="checkoutDiscountAmount">-Rp 0</span>
-          </div>
-        </div>
-      </form>
-
-      <div class="modal-footer">
-        <div>
-          <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">Total Tagihan:</span>
-          <span class="cart-total-value" id="checkoutGrandTotal">Rp 0</span>
-        </div>
-        <div style="display: flex; gap: 10px;">
-          <button type="button" class="btn-secondary" id="checkoutCancelBtn"
-            style="padding: 10px 18px; font-size: 0.95rem;">
-            Batal
-          </button>
-          <button type="button" class="btn-primary" id="confirmOrderBtn"
-            style="padding: 10px 22px; font-size: 0.95rem;">
-            <span>Konfirmasi Pesanan</span>
-            <span>✓</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================
-       MEMBER MAHASISWA MODAL (PENDAFTARAN & KARTU DIGITAL)
-       =================================================== -->
-  <div class="modal-backdrop" id="memberModalBackdrop">
-    <div class="modal-card member-modal-card" id="memberModal">
-      <div class="modal-header"
-        style="background: linear-gradient(135deg, var(--coffee-900), var(--coffee-950)); color: #FFF; border-bottom: 2px solid var(--caramel);">
-        <div class="modal-title-group">
-          <span style="font-size: 1.5rem;">🎓</span>
-          <h3 class="modal-title" style="color: #FFF;" id="memberModalTitle">Akun Member Mahasiswa</h3>
-        </div>
-        <button class="modal-close-btn" id="memberModalCloseBtn" aria-label="Tutup Modal Member"
-          style="color: #FFF; background: rgba(255,255,255,0.1);">✕</button>
-      </div>
-
-      <!-- Segmented Tabs: [ MASUK / LOGIN ] [ BUAT AKUN BARU ] -->
-      <div class="member-tabs-nav" id="memberTabsNav">
-        <button type="button" class="member-tab-btn active" id="tabLoginBtn" data-tab="login">
-          🔑 Masuk / Login
-        </button>
-        <button type="button" class="member-tab-btn" id="tabRegisterBtn" data-tab="register">
-          ✨ Buat Akun Baru
-        </button>
-      </div>
-
-      <!-- TAB 1: FORM LOGIN MEMBER LAMA -->
-      <div class="modal-body member-tab-content" id="memberLoginView"
-        style="padding: 24px; gap: 16px; display: flex; flex-direction: column;">
-        <div class="member-login-banner"
-          style="background: linear-gradient(135deg, #ECFDF5, #F0FDF4); border: 1.5px dashed #10B981; border-radius: 12px; padding: 14px 16px; text-align: left;">
-          <span
-            style="background: #10B981; color: #FFF; font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 100px; display: inline-block;">MEMBER
-            LAMA ☕</span>
-          <h4 style="margin: 6px 0 4px; color: #065F46; font-size: 1.05rem;">Sudah Pernah Mendaftar?</h4>
-          <p style="margin: 0; font-size: 0.86rem; color: #047857; line-height: 1.45;">
-            Masukkan nomor WhatsApp kamu yang terdaftar untuk mengakses Kartu Member dan promo diskonmu.
-          </p>
-        </div>
-
-        <form id="memberLoginForm" onsubmit="return false;" style="display: flex; flex-direction: column; gap: 14px;">
-          <div class="form-group">
-            <label for="memberLoginPhone" class="form-label">
-              <span>📱 Nomor HP Terdaftar</span>
-              <span class="required-star">*</span>
-            </label>
-            <input type="tel" id="memberLoginPhone" class="form-input" placeholder="Contoh: 08123456789 atau 628..."
-              required autocomplete="tel">
-          </div>
-
-          <button type="submit" class="btn-primary" id="memberLoginSubmitBtn"
-            style="padding: 13px; font-size: 1rem; margin-top: 6px; justify-content: center;">
-            <span>🔑 Masuk Akun Member</span>
-          </button>
-        </form>
-
-        <div style="text-align: center; margin-top: 8px;">
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Belum punya akun? </span>
-          <a href="javascript:void(0)" class="member-switch-link" id="linkToRegister"
-            style="font-size: 0.85rem; font-weight: 700; color: var(--caramel-dark); text-decoration: underline;">
-            Daftar di sini
-          </a>
-        </div>
-      </div>
-
-      <!-- TAB 2: FORM DAFTAR MEMBER BARU -->
-      <div class="modal-body member-tab-content" id="memberRegisterView"
-        style="padding: 24px; gap: 16px; display: none; flex-direction: column;">
-        <div class="member-perk-banner">
-          <span class="perk-badge">PROMO MAHASISWA ✨</span>
-          <h4 style="margin: 6px 0 4px; color: var(--coffee-900); font-size: 1.05rem;">Dapatkan Welcome Discount 10%!
-          </h4>
-          <p style="margin: 0; font-size: 0.86rem; color: var(--text-secondary); line-height: 1.45;">
-            Daftar sekarang untuk langsung menikmati <strong>Diskon 10%</strong> di pesanan pertamamu, plus promo
-            mingguan spesial mahasiswa!
-          </p>
-        </div>
-
-        <form id="memberRegisterForm" onsubmit="return false;"
-          style="display: flex; flex-direction: column; gap: 14px;">
-          <!-- Field 1: Nama Mahasiswa -->
-          <div class="form-group">
-            <label for="memberFormName" class="form-label">
-              <span>👤 Nama Lengkap / Panggilan</span>
-              <span class="required-star">*</span>
-            </label>
-            <input type="text" id="memberFormName" class="form-input" placeholder="Contoh: Fathir / Anisa Rahma"
-              required autocomplete="name">
-          </div>
-
-          <!-- Field 2: Asal Kampus -->
-          <div class="form-group">
-            <label for="memberFormCampus" class="form-label">
-              <span>🏛️ Asal Kampus / Universitas</span>
-              <span class="required-star">*</span>
-            </label>
-            <input type="text" id="memberFormCampus" class="form-input"
-              placeholder="Contoh: UI, ITB, UGM, Unhas, Binus, dll." required>
-          </div>
-
-          <!-- Field 3: Nomor WhatsApp -->
-          <div class="form-group">
-            <label for="memberFormPhone" class="form-label">
-              <span>📱 Nomor WhatsApp Aktif</span>
-              <span class="required-star">*</span>
-            </label>
-            <input type="tel" id="memberFormPhone" class="form-input" placeholder="Contoh: 08123456789 atau 628..."
-              required autocomplete="tel">
-            <span style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px;">
-              Notifikasi & kode promo member akan dikirimkan otomatis ke nomor WhatsApp kamu.
-            </span>
-          </div>
-
-          <button type="submit" class="btn-primary" id="memberSubmitBtn"
-            style="padding: 13px; font-size: 1rem; margin-top: 6px; justify-content: center;">
-            <span>🎓 Daftar Member & Aktifkan Diskon 10%</span>
-          </button>
-        </form>
-
-        <div style="text-align: center; margin-top: 8px;">
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Sudah punya akun? </span>
-          <a href="javascript:void(0)" class="member-switch-link" id="linkToLogin"
-            style="font-size: 0.85rem; font-weight: 700; color: var(--caramel-dark); text-decoration: underline;">
-            Masuk di sini
-          </a>
-        </div>
-      </div>
-
-      <!-- VIEW 2: Kartu Digital Member (Tampil jika sudah terdaftar) -->
-      <div class="modal-body" id="memberCardView"
-        style="display: none; padding: 24px; gap: 18px; flex-direction: column; align-items: center;">
-        <div class="member-digital-card">
-          <div class="card-chip-row">
-            <span class="card-logo-text">☕ KOPI MAHASISWA</span>
-            <span class="card-status-pill">✓ AKTIF</span>
-          </div>
-          <div class="card-id-code" id="cardMemberId">KM-MEMBER-2026-001</div>
-          <div class="card-user-info">
-            <div class="card-name" id="cardMemberName">Nama Mahasiswa</div>
-            <div class="card-campus" id="cardMemberCampus">Universitas Indonesia</div>
-            <div class="card-phone" id="cardMemberPhone">0812-xxxx-xxxx</div>
-          </div>
-          <div class="card-perks-row">
-            <span class="card-perk-tag">🏷️ Diskon 10% Aktif</span>
-            <span class="card-perk-tag">☕ Member Spesial</span>
-          </div>
-        </div>
-
-        <div class="member-benefits-box">
-          <h5 style="margin: 0 0 8px; font-size: 0.9rem; color: var(--coffee-900);">Keuntungan Akun Member Mahasiswa:
-          </h5>
-          <ul
-            style="margin: 0; padding-left: 20px; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
-            <li><strong>Welcome Discount 10%</strong> otomatis memotong transaksi pertamamu.</li>
-            <li><strong>Promo Mingguan Mahasiswa</strong> untuk diskon berkala setiap minggu.</li>
-            <li>Prioritas pelayanan dan pemesanan cepat di kasir.</li>
-          </ul>
-        </div>
-
-        <div style="display: flex; gap: 10px; width: 100%;">
-          <button type="button" class="btn-secondary" id="memberLogoutBtn"
-            style="flex: 1; padding: 10px; font-size: 0.88rem; color: #DC2626;">
-            Ganti Akun
-          </button>
-          <button type="button" class="btn-primary" id="memberDoneBtn"
-            style="flex: 1.5; padding: 10px; font-size: 0.95rem;">
-            Tutup
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================
-       SUCCESS RECEIPT MODAL ("PESANAN BERHASIL")
-       =================================================== -->
-  <div class="modal-backdrop" id="receiptModalBackdrop">
-    <div class="modal-card receipt-modal-card" id="receiptModal">
-      <div class="modal-header" style="background-color: var(--cream);">
-        <div class="modal-title-group">
-          <span style="font-size: 1.5rem;">🎉</span>
-          <h3 class="modal-title">Pesanan Berhasil Dibuat!</h3>
-        </div>
-        <button class="modal-close-btn" id="receiptCloseBtn" aria-label="Tutup Nota">✕</button>
-      </div>
-
-      <div class="modal-body" style="text-align: center; padding-top: 20px;">
-        <div class="receipt-stamp-badge">
-          ✓ TRANSAKSI SUKSES / LUNAS
-        </div>
-
-        <!-- Cashier Banner -->
-        <div class="receipt-cashier-banner" id="receiptCashierBanner"
-          style="background: linear-gradient(135deg, #FEF3C7, #FDE68A); border: 1.5px solid #F59E0B; color: #92400E; padding: 10px 14px; border-radius: 10px; font-weight: 700; font-size: 0.88rem; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-          <span>📌</span>
-          <span>Tunjukkan Struk Digital Ini ke Kasir / Barista</span>
-        </div>
-
-        <p style="font-size: 0.92rem; color: var(--text-secondary); margin-bottom: 14px;">
-          Terima kasih! Pesanan Anda sedang disiapkan oleh barista kami.
-        </p>
-
-        <!-- Transaction ID Box -->
-        <div class="receipt-id-box">
-          <span class="receipt-id-label">ID Transaksi:</span>
-          <span class="receipt-id-value" id="receiptTxId">KM-20260909-001</span>
-        </div>
-
-        <!-- Meta Details -->
-        <div class="receipt-info-grid">
-          <div class="receipt-info-item">
-            <span class="receipt-info-label">Nama Pembeli</span>
-            <span class="receipt-info-val" id="receiptCustomerName">-</span>
-          </div>
-          <div class="receipt-info-item">
-            <span class="receipt-info-label">Tipe & Meja</span>
-            <span class="receipt-info-val" id="receiptTableInfo">-</span>
-          </div>
-          <div class="receipt-info-item">
-            <span class="receipt-info-label">Waktu Transaksi</span>
-            <span class="receipt-info-val" id="receiptDateTime">-</span>
-          </div>
-          <div class="receipt-info-item">
-            <span class="receipt-info-label">Metode Bayar</span>
-            <span class="receipt-info-val" id="receiptPaymentMethod">-</span>
-          </div>
-        </div>
-
-        <!-- Itemized Table -->
-        <table class="receipt-table">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th style="text-align: center;">Qty</th>
-              <th style="text-align: right;">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody id="receiptItemsTableBody">
-            <!-- Populated dynamically -->
-          </tbody>
-        </table>
-
-        <!-- Breakdown Box (Subtotal & Diskon) -->
-        <div class="receipt-breakdown-box" id="receiptBreakdownBox"
-          style="margin-top: 10px; margin-bottom: 10px; padding: 8px 12px; background: var(--cream); border-radius: 8px; font-size: 0.88rem; display: flex; flex-direction: column; gap: 4px;">
-          <div style="display: flex; justify-content: space-between; color: var(--text-secondary);">
-            <span>Subtotal:</span>
-            <span id="receiptSubtotal" style="font-weight: 600;">Rp 0</span>
-          </div>
-          <div id="receiptDiscountRow"
-            style="display: none; justify-content: space-between; color: #059669; font-weight: 700;">
-            <span id="receiptDiscountLabel">Diskon Member (10%):</span>
-            <span id="receiptDiscountAmount">-Rp 0</span>
-          </div>
-        </div>
-
-        <!-- Grand Total Bar -->
-        <div class="receipt-total-bar">
-          <span class="label">Total Pembayaran:</span>
-          <span class="amount" id="receiptGrandTotal">Rp 0</span>
-        </div>
-      </div>
-
-      <div class="modal-footer" style="display: flex; flex-wrap: wrap; gap: 10px;">
-        <button class="btn-secondary" id="printReceiptBtn"
-          style="flex: 1.2; min-width: 150px; padding: 12px; background: #FFF; border: 1.5px solid var(--caramel); color: var(--caramel-dark); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-          <span>🖨️</span><span>Cetak / Simpan Struk</span>
-        </button>
-        <button class="btn-secondary" id="viewHistoryFromReceiptBtn" style="flex: 1; min-width: 120px; padding: 12px;">
-          📜 Riwayat
-        </button>
-        <button class="btn-primary" id="orderAgainBtn" style="flex: 1; min-width: 130px; padding: 12px;">
-          ☕ Pesan Lagi
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================
-       ORDER HISTORY MODAL ("RIWAYAT PESANAN")
-       =================================================== -->
-  <div class="modal-backdrop" id="historyModalBackdrop">
-    <div class="modal-card history-modal-card" id="historyModal">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <span style="font-size: 1.5rem;">📜</span>
-          <h3 class="modal-title">Riwayat Pesanan Anda</h3>
-        </div>
-        <button class="modal-close-btn" id="historyCloseBtn" aria-label="Tutup Riwayat">✕</button>
-      </div>
-
-      <div class="modal-body" id="historyListContainer">
-        <!-- Rendered dynamically by js/app.js -->
-      </div>
-
-      <div class="modal-footer" style="justify-content: flex-end;">
-        <button class="btn-primary" id="historyDoneBtn" style="padding: 10px 24px;">
-          Tutup Riwayat
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================
-       THERMAL RECEIPT PRINT AREA (hidden, only visible on window.print())
-       =================================================== -->
-  <div id="thermalPrintArea" aria-hidden="true">
-    <!-- Populated dynamically by printReceipt() in app.js -->
-  </div>
-
-  <!-- ===================================================
-       OWNER PIN VERIFICATION MODAL (popup dari footer)
-       =================================================== -->
-  <div class="modal-backdrop" id="ownerPinModalBackdrop" style="z-index: 99998;">
-    <div class="modal-card" style="max-width: 440px; border: 2px solid var(--caramel); padding: 0; overflow: hidden;">
-      <!-- Header -->
-      <div class="modal-header"
-        style="background: linear-gradient(135deg, var(--coffee-900), var(--coffee-950)); color: #FFF; border-bottom: 2px solid var(--caramel);">
-        <div class="modal-title-group">
-          <span style="font-size: 1.5rem;">👑</span>
-          <h3 class="modal-title" style="color: #FFF;">Verifikasi Owner PIN</h3>
-        </div>
-        <button class="modal-close-btn" id="ownerPinCloseBtn" aria-label="Tutup"
-          style="color: #FFF; background: rgba(255,255,255,0.1);">✕</button>
-      </div>
-      <!-- Body -->
-      <div class="modal-body"
-        style="text-align: center; padding: 28px 24px; gap: 16px; display: flex; flex-direction: column; align-items: center; background: linear-gradient(135deg, #26160F, #190C06);">
-        <div class="owner-lock-icon" style="margin-bottom: 4px;">🔐</div>
-        <p style="color: #D4BEA9; font-size: 0.9rem; margin: 0; line-height: 1.5;">
-          Halaman <strong style="color: #FBBF24;">Dashboard Owner</strong> hanya untuk pemilik kafe.<br>
-          Masukkan PIN / Password Owner untuk melanjutkan.
-        </p>
-
-        <!-- PIN Input -->
-        <div style="position: relative; width: 100%;">
-          <input type="password" id="ownerPinInput" class="owner-pin-input" maxlength="20" placeholder="••••••••"
-            autocomplete="off" aria-label="PIN atau Password Owner">
-          <button type="button" class="btn-pin-peek" id="ownerPinPeekBtn" aria-label="Tampilkan/Sembunyikan PIN"
-            tabindex="-1">👁️</button>
-        </div>
-
-        <!-- Error Message -->
-        <div id="ownerPinErrorMsg"
-          style="display: none; background: rgba(239,68,68,0.15); color: #F87171; border: 1px solid rgba(239,68,68,0.4); padding: 10px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; width: 100%; box-sizing: border-box; text-align: left;">
-          ❌ PIN / Password salah. Coba lagi.
-        </div>
-
-        <!-- Attempt Counter -->
-        <div id="ownerPinAttemptInfo" style="font-size: 0.78rem; color: #A89080; display: none;">
-          Percobaan gagal: <span id="ownerPinAttemptCount">0</span>/5
-        </div>
-      </div>
-      <!-- Footer -->
-      <div class="modal-footer"
-        style="background: #190C06; border-top: 1px solid rgba(245,158,11,0.2); gap: 12px; justify-content: center;">
-        <button class="btn-secondary" id="ownerPinCancelBtn" style="flex: 1; padding: 12px;">
-          Batal
-        </button>
-        <button class="owner-btn-primary" id="ownerPinSubmitBtn"
-          style="flex: 2; padding: 12px 20px; font-size: 0.98rem;">
-          🔓 Masuk Dashboard Owner
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================
-       TOAST CONTAINER
-       =================================================== -->
-  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
-
-  <!-- YouTube IFrame API for Background Lo-Fi Player -->
-  <script src="https://www.youtube.com/iframe_api"></script>
-
-  <!-- JavaScript Scripts -->
-  <script src="js/products.js?v=2.1"></script>
-  <script src="js/storage.js?v=2.1"></script>
-  <script src="js/ai-engine.js?v=2.1"></script>
-  <script src="js/app.js?v=2.1"></script>
-  <script src="js/ai-barista.js?v=2.1"></script>
-  <script src="js/music-player.js?v=2.1"></script>
-
-  <!-- ===================================================
-       KOPIAI CUSTOMER SERVICE CONFIGURATION & SYSTEM PROMPT
-       =================================================== -->
-  <script id="gemini-ai-barista-config">
-    /**
-     * Konfigurasi KopiAI Customer Service (Menu Utama)
-     * Persona: Ramah, solutif, santai, dan kasual khas Gen Z yang sopan.
-     * Tugas: Melayani pertanyaan menu, harga, lokasi, jam operasional, dan rekomendasi minuman.
-     */
-    window.GEMINI_BARISTA_CONFIG = {
-      apiKey: "AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw",
-      model: "gemini-3.7-flash",
-      role: "customer_service", // Customer Service KopiAI
-      menuData: []
-    };
-
-    // Sinkronisasi config ke AIEngine
-    if (typeof AIEngine !== "undefined") {
-      AIEngine.config.geminiApiKey = window.GEMINI_BARISTA_CONFIG.apiKey;
-      AIEngine.config.useGemini = true;
-      AIEngine.config.geminiModel = window.GEMINI_BARISTA_CONFIG.model;
-    }
-  </script>
 </body>
-
 </html>

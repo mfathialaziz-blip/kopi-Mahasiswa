@@ -66,7 +66,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
       sessionStorage.removeItem("kopi_admin_logged_in");
-      window.location.reload();
+      localStorage.removeItem("kopi_admin_logged_in");
+      localStorage.removeItem("km_auth_role");
+      window.location.href = "login.php?action=logout";
     });
   }
 
@@ -104,7 +106,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (headerLogoutBtn) {
     headerLogoutBtn.addEventListener("click", () => {
       sessionStorage.removeItem("kopi_admin_logged_in");
-      window.location.reload();
+      localStorage.removeItem("kopi_admin_logged_in");
+      localStorage.removeItem("km_auth_role");
+      window.location.href = "login.php?action=logout";
     });
   }
 
@@ -1251,4 +1255,162 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Check initial authentication
   checkAuth();
+
+  // ===================================================
+  // MODAL: PENGATURAN ENGINE AI
+  // ===================================================
+  const modalAiSettings = document.getElementById("modalAdminAiSettings");
+  const sidebarAiBtn = document.getElementById("sidebarAiSettingsBtn");
+  const dropdownAiBtn = document.getElementById("dropdownAiSettingsBtn");
+  const closeAiModal = document.getElementById("closeAiSettingsModal");
+  const cancelAiBtn = document.getElementById("cancelAiSettingsBtn");
+  const saveAiBtn = document.getElementById("saveAiSettingsBtn");
+  const aiSettingsSavedMsg = document.getElementById("aiSettingsSavedMsg");
+  const orModelSection = document.getElementById("orModelSection");
+  const aiOrModel = document.getElementById("aiOrModel");
+  const aiOrKey = document.getElementById("aiOrKey");
+  const aiGeminiKey = document.getElementById("aiGeminiKey");
+
+  function openAiSettingsModal() {
+    if (!modalAiSettings) return;
+    // Baca config dari localStorage / AIEngine
+    const savedProvider = localStorage.getItem("kopi_ai_provider") || "openrouter";
+    const savedConfig = JSON.parse(localStorage.getItem("kopi_ai_config") || "{}");
+    const savedOrModel = localStorage.getItem("kopi_ai_admin_model") || "google/gemini-2.5-flash";
+
+    // Set radio button
+    const radioEl = document.querySelector(`input[name="aiProvider"][value="${savedProvider}"]`);
+    if (radioEl) radioEl.checked = true;
+
+    // Set model selector
+    if (aiOrModel) aiOrModel.value = savedOrModel;
+
+    // Set API keys (masked)
+    if (aiOrKey) aiOrKey.value = savedConfig.openRouterApiKey || "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";
+    if (aiGeminiKey) aiGeminiKey.value = savedConfig.geminiApiKey || "";
+
+    // Show/hide model section
+    if (orModelSection) orModelSection.style.display = (savedProvider === "openrouter") ? "block" : "none";
+
+    if (aiSettingsSavedMsg) aiSettingsSavedMsg.style.display = "none";
+    modalAiSettings.style.display = "flex";
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeAiSettingsModal() {
+    if (!modalAiSettings) return;
+    modalAiSettings.style.display = "none";
+    document.body.style.overflow = "";
+  }
+
+  if (sidebarAiBtn) sidebarAiBtn.addEventListener("click", openAiSettingsModal);
+  if (dropdownAiBtn) dropdownAiBtn.addEventListener("click", () => {
+    // Tutup dropdown dulu
+    const dropdown = document.getElementById("adminProfileDropdown");
+    if (dropdown) dropdown.classList.remove("open");
+    openAiSettingsModal();
+  });
+  if (closeAiModal) closeAiModal.addEventListener("click", closeAiSettingsModal);
+  if (cancelAiBtn) cancelAiBtn.addEventListener("click", closeAiSettingsModal);
+
+  // Show/hide model section saat radio berubah
+  document.querySelectorAll("input[name='aiProvider']").forEach(radio => {
+    radio.addEventListener("change", () => {
+      if (orModelSection) orModelSection.style.display = (radio.value === "openrouter") ? "block" : "none";
+    });
+  });
+
+  // Tutup modal bila klik latar belakang
+  if (modalAiSettings) {
+    modalAiSettings.addEventListener("click", (e) => {
+      if (e.target === modalAiSettings) closeAiSettingsModal();
+    });
+  }
+
+  if (saveAiBtn) {
+    saveAiBtn.addEventListener("click", () => {
+      const selectedProvider = document.querySelector("input[name='aiProvider']:checked")?.value || "openrouter";
+      const selectedModel = aiOrModel ? aiOrModel.value : "google/gemini-2.5-flash";
+      const orApiKey = aiOrKey ? aiOrKey.value.trim() : "";
+      const geminiApiKey = aiGeminiKey ? aiGeminiKey.value.trim() : "";
+
+      // Simpan ke localStorage
+      localStorage.setItem("kopi_ai_provider", selectedProvider);
+      localStorage.setItem("kopi_ai_admin_model", selectedModel);
+      const newConfig = {
+        openRouterApiKey: orApiKey,
+        geminiApiKey: geminiApiKey,
+        useOpenRouter: selectedProvider === "openrouter",
+        openRouterModel: selectedModel
+      };
+      localStorage.setItem("kopi_ai_config", JSON.stringify(newConfig));
+
+      // Sync ke AIEngine jika tersedia
+      if (typeof AIEngine !== "undefined" && AIEngine.saveConfig) {
+        AIEngine.saveConfig({
+          useOpenRouter: selectedProvider === "openrouter",
+          openRouterApiKey: orApiKey,
+          geminiApiKey: geminiApiKey,
+          openRouterModel: selectedModel
+        });
+      }
+
+      // Dispatch event agar ai-admin-chat.js & ai-barista.js bisa update
+      window.dispatchEvent(new CustomEvent("kopiAiConfigUpdated", {
+        detail: { provider: selectedProvider, model: selectedModel }
+      }));
+
+      // Update config global OPENROUTER_ADMIN_CONFIG
+      if (window.OPENROUTER_ADMIN_CONFIG) {
+        window.OPENROUTER_ADMIN_CONFIG.apiKey = orApiKey;
+        window.OPENROUTER_ADMIN_CONFIG.model = selectedModel;
+      }
+
+      if (aiSettingsSavedMsg) {
+        aiSettingsSavedMsg.style.display = "block";
+        setTimeout(() => { aiSettingsSavedMsg.style.display = "none"; }, 3000);
+      }
+    });
+  }
+
+  // ===================================================
+  // 8. EXPOSE ADMIN CONTEXT UNTUK KOPIAI ADMIN CHAT
+  // ===================================================
+  window.getAdminDashboardContext = function() {
+    let cookieRole = null;
+    const match = document.cookie.match('(^|;) ?km_auth_role=([^;]*)(;|$)');
+    if (match) cookieRole = decodeURIComponent(match[2]).toLowerCase().trim();
+    const localRole = (localStorage.getItem("km_auth_role") || "").toLowerCase().trim();
+    const isOwner = cookieRole === "owner" || localRole === "owner" || document.cookie.includes("kopi_owner_verified=true");
+    const activeRole = isOwner ? "Owner" : "Admin";
+    const displayName = isOwner ? "Owner Kopi Mahasiswa" : "Fathialaziz (Admin)";
+
+    // Deteksi timeframe aktif berdasarkan tab atau tombol aktif di layar
+    let activeTimeframe = "all";
+    if (currentTab === "dashboard") {
+      activeTimeframe = dashboardTimeframe || "today";
+    } else if (currentTab === "transactions") {
+      activeTimeframe = txFilterTimeframe || "all";
+    } else if (currentTab === "reports") {
+      activeTimeframe = typeof reportsTimeframe !== "undefined" ? reportsTimeframe : "today";
+    }
+
+    return {
+      activeRole,
+      displayName,
+      currentTab,
+      dashboardTimeframe,
+      txFilterTimeframe,
+      activeTimeframe,
+      getAllTransactions: () => StorageManager.getTransactions(),
+      getActiveTransactions: (tf) => {
+        const targetTf = tf || activeTimeframe;
+        if (targetTf === "all") return StorageManager.getTransactions();
+        const analytics = StorageManager.getSalesAnalytics ? StorageManager.getSalesAnalytics(targetTf) : null;
+        return (analytics && analytics.transactions && analytics.transactions.length > 0)
+          ? analytics.transactions
+          : StorageManager.getTransactions();
+      }
+    };
+  };
 });

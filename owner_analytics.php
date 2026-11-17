@@ -389,6 +389,16 @@ try {
         }
     }
 
+    // 7. Ambil 5 Transaksi Terakhir (Audit Operasional Cepat)
+    $stmtRecent = $pdo->prepare("
+        SELECT kode_transaksi, nama_pelanggan, metode_pembayaran, total_omset, created_at 
+        FROM `pesanan` 
+        ORDER BY `created_at` DESC 
+        LIMIT 5
+    ");
+    $stmtRecent->execute();
+    $recentTransactions = $stmtRecent->fetchAll();
+
     // Response JSON Lengkap untuk Frontend Owner Dashboard
     echo json_encode([
         'success'      => true,
@@ -409,9 +419,10 @@ try {
             'revenue' => $chartOmset,
             'orders'  => $chartOrders
         ],
-        'top_menus'         => $topMenus,
-        'low_menus'         => $lowMenus,
-        'payment_breakdown' => $paymentBreakdown
+        'top_menus'           => $topMenus,
+        'low_menus'           => $lowMenus,
+        'payment_breakdown'   => $paymentBreakdown,
+        'recent_transactions' => $recentTransactions
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
 } catch (PDOException $e) {

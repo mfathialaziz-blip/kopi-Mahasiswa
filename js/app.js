@@ -192,6 +192,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // 2. Member Status in Header & Mobile Navigation
     const isMember = StorageManager.isMember();
     const currentMember = StorageManager.getMember();
+    const memberProfileName = document.getElementById("memberProfileName");
+    if (memberProfileName) {
+      if (currentMember && currentMember.name) {
+        const shortName = currentMember.name.trim().split(" ")[0];
+        memberProfileName.textContent = `Halo, ${shortName} ☕`;
+      } else {
+        memberProfileName.textContent = "Member Mahasiswa";
+      }
+    }
+
     if (memberBtnText) {
       if (isMember && currentMember && currentMember.name) {
         const shortName = currentMember.name.trim().split(" ")[0];
@@ -223,8 +233,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // 3. Transaction History Badges
-    const transactions = StorageManager.getTransactions();
+    // 3. Transaction History Badges (Filtered for Logged-in Member)
+    let transactions = StorageManager.getTransactions();
+    if (currentMember) {
+      const mName = (currentMember.name || "").toLowerCase().trim();
+      const mPhone = (currentMember.cleanPhone || currentMember.phone || "").replace(/\D/g, "");
+      transactions = transactions.filter(tx => {
+        const txName = (tx.customerName || "").toLowerCase().trim();
+        const txPhone = (tx.customerPhone || "").replace(/\D/g, "");
+        return (mName && txName.includes(mName)) || (mPhone && txPhone === mPhone);
+      });
+    }
     const txCount = transactions.length;
     if (navHistoryBadge) navHistoryBadge.textContent = txCount;
     if (drawerHistoryCount) drawerHistoryCount.textContent = txCount;
@@ -1122,7 +1141,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const res = await fetch("bot-proxy.php?action=login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: normalizedPhone })
+          body: JSON.stringify({ phone: normalizedPhone, nomorHp: normalizedPhone })
         });
         const data = await res.json().catch(() => null);
         console.log("📥 [Login via bot-proxy.php]:", data);
@@ -1132,7 +1151,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data && data.success === true) {
           member = data.member || { name: "Member", phone: normalizedPhone };
           loginSuccess = true;
-          waSentStatus = (data.waSent === true || !data.waError);
+          waSentStatus = (data.waSent === true);
         }
       } catch (proxyErr) {
         console.warn("⚠️ [Login] bot-proxy.php:", proxyErr.message);
@@ -1147,7 +1166,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const res = await fetch("login.php", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify({ phone: normalizedPhone })
+          body: JSON.stringify({ phone: normalizedPhone, nomorHp: normalizedPhone })
         });
         if (res.ok) {
           const data = await res.json().catch(() => null);
@@ -1176,7 +1195,16 @@ document.addEventListener("DOMContentLoaded", () => {
               const pNorm = p.startsWith("0") ? "62" + p.slice(1) : p;
               return p === cleanDigits || pNorm === normalizedPhone || p === normalizedPhone;
             });
-            if (found) { member = found; loginSuccess = true; }
+            if (found) {
+              member = found;
+              loginSuccess = true;
+              // Kirim notifikasi via login.php di latar belakang
+              fetch("login.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify({ phone: normalizedPhone, name: member.name, campus: member.campus })
+              }).catch(() => {});
+            }
           }
         }
       } catch (e) {}
@@ -1187,7 +1215,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // ============================================================
     if (!loginSuccess) {
       const lr = StorageManager.loginMemberByPhone(rawPhone);
-      if (lr.success) { member = lr.member; loginSuccess = true; }
+      if (lr.success) {
+        member = lr.member;
+        loginSuccess = true;
+        // Kirim notifikasi via login.php di latar belakang
+        fetch("login.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ phone: normalizedPhone, name: member.name, campus: member.campus })
+        }).catch(() => {});
+      }
     }
 
     if (!loginSuccess || !member) {
@@ -1402,7 +1439,17 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderHistoryList() {
     if (!historyListContainer) return;
 
-    const transactions = StorageManager.getTransactions();
+    let transactions = StorageManager.getTransactions();
+    const currentMember = StorageManager.getMember();
+    if (currentMember) {
+      const mName = (currentMember.name || "").toLowerCase().trim();
+      const mPhone = (currentMember.cleanPhone || currentMember.phone || "").replace(/\D/g, "");
+      transactions = transactions.filter(tx => {
+        const txName = (tx.customerName || "").toLowerCase().trim();
+        const txPhone = (tx.customerPhone || "").replace(/\D/g, "");
+        return (mName && txName.includes(mName)) || (mPhone && txPhone === mPhone);
+      });
+    }
 
     if (transactions.length === 0) {
       historyListContainer.innerHTML = `
@@ -1461,6 +1508,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (navHistoryBtn) navHistoryBtn.addEventListener("click", openHistoryModal);
+  const navHistoryMemberBtn = document.getElementById("navHistoryMemberBtn");
+  if (navHistoryMemberBtn) navHistoryMemberBtn.addEventListener("click", openHistoryModal);
   if (drawerHistoryBtn) {
     drawerHistoryBtn.addEventListener("click", () => {
       toggleMobileMenu(false);

@@ -2,23 +2,50 @@
 # KOPI MAHASISWA — Apache Configuration (.htaccess)
 # ===================================================
 
+# 1. Matikan Directory Listing
+Options -Indexes
+
+# 2. Blokir Akses Langsung ke File Sensitif (403 Forbidden)
+<FilesMatch "(\.env|members\.json|admins\.json|package\.json|package-lock\.json|bot_debug\.log|\.gitignore)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 3. URL Rewriting (URL Bersih Tanpa Ekstensi)
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # 1. Redirect HTTP ke HTTPS (Opsional: aktifkan jika laragon.crt sudah di-trust)
-    # RewriteCond %{HTTPS} off
-    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    # Jangan proses rewrite jika file atau folder fisik nyata sudah ada (misal .php, .html, css/, js/)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
 
-    # 2. Reverse proxy untuk API Bot WhatsApp / Express (jika mod_proxy aktif di Apache)
+    # Pemetaan URL Bersih ke Handler PHP / HTML
+    RewriteRule ^$                    index.php           [QSA,L]
+    RewriteRule ^login/?$             login.php           [QSA,L]
+    RewriteRule ^admin/?$             admin.php           [QSA,L]
+    RewriteRule ^owner/?$             owner.php           [QSA,L]
+    RewriteRule ^menu/?$              menu.php            [QSA,L]
+
+    # Endpoints utilitas & API internal
+    RewriteRule ^get_menu/?$          get_menu.php        [QSA,L]
+    RewriteRule ^update_menu/?$       update_menu.php     [QSA,L]
+    RewriteRule ^owner_analytics/?$   owner_analytics.php [QSA,L]
+    RewriteRule ^bot-proxy/?$         bot-proxy.php       [QSA,L]
+    RewriteRule ^promo_scheduler/?$   promo_scheduler.php [QSA,L]
+
+    # Reverse proxy ke bot node.js jika mod_proxy aktif
     <IfModule mod_proxy.c>
         RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
     </IfModule>
 </IfModule>
 
-# Mencegah listing isi folder secara terbuka
-Options -Indexes
-
-# Security Headers
+# 4. Security Headers
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
@@ -26,3 +53,7 @@ Options -Indexes
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
+# 5. Charset Default UTF-8
+<IfModule mod_mime.c>
+    AddCharset UTF-8 .html .css .js .json .php
+</IfModule>

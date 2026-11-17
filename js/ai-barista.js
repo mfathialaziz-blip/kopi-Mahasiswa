@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <!-- Floating Launcher -->
     <div class="ai-barista-launcher" id="aiLauncher" aria-label="Buka KopiAI Customer Service">
       <div class="ai-launcher-bubble" id="aiBubble">
-        <span>☕ Hai kak! Ada yang bisa KopiAI bantu seputar menu, harga, atau rekomendasi minuman? Tanya di sini yuk!</span>
+        <span>☕ Yo Bestie! Lagi pusing nugas atau butuh booster kopi? Sini ngobrol bareng KopiAI!</span>
         <button class="ai-bubble-close" id="aiBubbleClose" aria-label="Tutup pesan">✕</button>
       </div>
       <button class="ai-launcher-btn" id="aiLauncherBtn" title="Chat dengan KopiAI Customer Service">
@@ -62,35 +62,50 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="ai-settings-modal" id="aiSettingsModal">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <h4 style="font-family: var(--font-comic); font-size: 0.95rem; color: var(--coffee-950); margin: 0;">
-            ⚙️ Pengaturan AI Gemini
+            ⚙️ Pengaturan Engine AI
           </h4>
           <button class="ai-btn-icon" id="aiCloseSettingsBtn" style="color: var(--coffee-950);">✕</button>
         </div>
 
-        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 12px;">
-          Pilih mode kecerdasan buatan Barista Virtual:
+        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">
+          Pilih Provider AI &amp; Konfigurasi API Key:
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.82rem;">
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem;">
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input type="radio" name="aiEngineMode" value="gemini" checked id="modeGeminiRadio">
-            <span><strong>Google Gemini Live</strong> (Cloud AI)</span>
+            <input type="radio" name="aiEngineMode" value="gemini" id="modeGeminiRadio">
+            <span><strong>Google Gemini API</strong> (Direct Cloud AI)</span>
+          </label>
+
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="radio" name="aiEngineMode" value="openrouter" id="modeOpenRouterRadio" checked>
+            <span><strong>OpenRouter Multi-Model API</strong> (DeepSeek, Llama, GPT, dll)</span>
           </label>
 
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
             <input type="radio" name="aiEngineMode" value="local" id="modeLocalRadio">
-            <span><strong>Smart Local Barista</strong> (Offline Fallback)</span>
+            <span><strong>Smart Local Barista (Offline Fallback)</strong></span>
           </label>
 
+          <!-- Input 1: Gemini API Key -->
           <div id="geminiKeyGroup" style="display: block; margin-top: 6px;">
             <label style="font-size: 0.75rem; font-weight: 700; color: var(--coffee-800); display: block; margin-bottom: 4px;">Gemini API Key:</label>
-            <input type="password" id="geminiApiKeyInput" class="form-input" style="font-size: 0.8rem; padding: 6px 10px;" placeholder="Masukkan Gemini API Key..." value="${AIEngine.config.geminiApiKey || 'AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw'}">
-            <span style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-top: 4px;">
-              *API Key aktif & terintegrasi langsung dengan Google Gemini.
+            <input type="password" id="geminiApiKeyInput" class="form-input" style="font-size: 0.8rem; padding: 6px 10px; width: 100%; box-sizing: border-box;" placeholder="Masukkan Gemini API Key..." value="${AIEngine.config.geminiApiKey || 'AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw'}">
+            <span style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-top: 2px;">
+              *Digunakan saat memilih Google Gemini API.
             </span>
           </div>
 
-          <button class="btn-primary" id="saveAiSettingsBtn" style="padding: 8px; font-size: 0.82rem; margin-top: 6px;">
+          <!-- Input 2: OpenRouter API Key -->
+          <div id="openRouterKeyGroup" style="display: block; margin-top: 6px;">
+            <label style="font-size: 0.75rem; font-weight: 700; color: var(--coffee-800); display: block; margin-bottom: 4px;">OpenRouter API Key:</label>
+            <input type="password" id="openRouterApiKeyInput" class="form-input" style="font-size: 0.8rem; padding: 6px 10px; width: 100%; box-sizing: border-box;" placeholder="Masukkan OpenRouter API Key..." value="${AIEngine.config.openRouterApiKey || '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'}">
+            <span style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-top: 2px;">
+              *Default terisi key OpenRouter Kopi Mahasiswa.
+            </span>
+          </div>
+
+          <button class="btn-primary" id="saveAiSettingsBtn" style="padding: 8px; font-size: 0.82rem; margin-top: 8px;">
             Simpan Pengaturan
           </button>
         </div>
@@ -154,29 +169,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const saveAiSettingsBtn = document.getElementById("saveAiSettingsBtn");
   const modeLocalRadio = document.getElementById("modeLocalRadio");
   const modeGeminiRadio = document.getElementById("modeGeminiRadio");
+  const modeOpenRouterRadio = document.getElementById("modeOpenRouterRadio");
   const geminiKeyGroup = document.getElementById("geminiKeyGroup");
+  const openRouterKeyGroup = document.getElementById("openRouterKeyGroup");
   const geminiApiKeyInput = document.getElementById("geminiApiKeyInput");
+  const openRouterApiKeyInput = document.getElementById("openRouterApiKeyInput");
   const aiChipsWrapper = document.getElementById("aiChipsWrapper");
   const aiChatBody = document.getElementById("aiChatBody");
   const aiChatForm = document.getElementById("aiChatForm");
   const aiChatInput = document.getElementById("aiChatInput");
 
   // Load Saved AI Settings
-  if (AIEngine.config.useGemini) {
+  const currentProvider = AIEngine.config.provider || (AIEngine.config.useOpenRouter ? "openrouter" : (AIEngine.config.useGemini ? "gemini" : "local"));
+  if (currentProvider === "openrouter" && modeOpenRouterRadio) {
+    modeOpenRouterRadio.checked = true;
+  } else if (currentProvider === "gemini" && modeGeminiRadio) {
     modeGeminiRadio.checked = true;
-    geminiKeyGroup.style.display = "block";
-    geminiApiKeyInput.value = AIEngine.config.geminiApiKey || "AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw";
-  } else {
+  } else if (modeLocalRadio) {
     modeLocalRadio.checked = true;
-    geminiKeyGroup.style.display = "none";
   }
 
-  modeGeminiRadio.addEventListener("change", () => {
-    geminiKeyGroup.style.display = "block";
-  });
-  modeLocalRadio.addEventListener("change", () => {
-    geminiKeyGroup.style.display = "none";
-  });
+  if (geminiApiKeyInput) geminiApiKeyInput.value = AIEngine.config.geminiApiKey || "AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw";
+  if (openRouterApiKeyInput) openRouterApiKeyInput.value = AIEngine.config.openRouterApiKey || "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";
 
   // Settings Open/Close
   aiSettingsToggleBtn.addEventListener("click", () => {
@@ -186,14 +200,27 @@ document.addEventListener("DOMContentLoaded", () => {
     aiSettingsModal.classList.remove("active");
   });
   saveAiSettingsBtn.addEventListener("click", () => {
-    const isGemini = modeGeminiRadio.checked;
-    const key = (geminiApiKeyInput.value || "").trim();
+    let selectedMode = "openrouter";
+    if (modeOpenRouterRadio && modeOpenRouterRadio.checked) selectedMode = "openrouter";
+    else if (modeGeminiRadio && modeGeminiRadio.checked) selectedMode = "gemini";
+    else if (modeLocalRadio && modeLocalRadio.checked) selectedMode = "local";
+
+    const geminiKey = (geminiApiKeyInput.value || "").trim();
+    const openRouterKey = (openRouterApiKeyInput.value || "").trim();
+
     AIEngine.saveConfig({
-      useGemini: isGemini,
-      geminiApiKey: key
+      provider: selectedMode,
+      useOpenRouter: selectedMode === "openrouter",
+      useGemini: selectedMode === "gemini",
+      geminiApiKey: geminiKey,
+      openRouterApiKey: openRouterKey
     });
+
     aiSettingsModal.classList.remove("active");
-    appendAiMessage(`⚙️ Pengaturan AI disimpan! Menggunakan mode **${isGemini ? "Google Gemini AI Live" : "Smart Local Barista"}**.`);
+    const modeLabel = selectedMode === "openrouter"
+      ? "OpenRouter Multi-Model API"
+      : (selectedMode === "gemini" ? "Google Gemini API" : "Smart Local Barista (Offline Fallback)");
+    appendAiMessage(`⚙️ Pengaturan Engine AI disimpan! Provider aktif: **${modeLabel}**.`);
   });
 
   // Render Saved Chat History on Startup
@@ -295,9 +322,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const userName = (typeof AIEngine !== "undefined" && AIEngine.getUserName) ? AIEngine.getUserName() : "";
     let welcomeText = "";
     if (userName) {
-      welcomeText = `Halo kak **${userName}**! Senang ketemu lagi di **Kopi Mahasiswa** ☕✨\n\nAda yang bisa KopiAI bantu seputar menu, harga, jam operasional, atau rekomendasi minuman favorit hari ini?`;
+      welcomeText = `Yo **${userName}**, Bestie! ✨ Seneng banget lu balik lagi nongkrong di **Kopi Mahasiswa** ☕\n\nMau gue siapin kopi apa nih biar makin chill nugasnya? Atau mau kepoin menu diskon hari ini? Spill aja ke gue!`;
     } else {
-      welcomeText = `Halo kak! Selamat datang di **Kopi Mahasiswa** ☕✨\n\nAku **KopiAI**, asisten virtual dan customer service resmi di sini. Ada yang bisa aku bantu seputar menu, harga, jam operasional, atau rekomendasi minuman hari ini? Silakan tanya langsung atau klik tombol cepat di atas ya!`;
+      welcomeText = `Halo Bestie! Selamat datang di **Kopi Mahasiswa** ☕✨\n\nGue **KopiAI**, asisten virtual sekaligus CS gaul lu di sini. Mau gue siapin kopi apa nih biar gak ngantuk dan tetep chill nugas? Tanya menu, harga, atau promo bebas langsung spill ke gue ya!`;
     }
     appendAiMessage(welcomeText, []);
   }
@@ -420,12 +447,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (result && result.reply) {
         appendAiMessage(result.reply, result.recommendations || []);
       } else {
-        appendAiMessage("Halo kak! Ada yang bisa Barista Virtual bantu untuk rekomendasi menu atau obrolan santai hari ini? ☕✨");
+        appendAiMessage("Yo Bestie! Ada yang bisa gue bantu? Mau spill kopi favorit atau butuh camilan buat nemenin lu nugas hari ini? ☕✨");
       }
     } catch (err) {
       console.error("AI Barista error:", err);
       hideTypingIndicator();
-      appendAiMessage("Aduh maaf kak, koneksi AI Barista lagi sedikit terganggu. Coba tanyakan sekali lagi ya! ☕");
+      appendAiMessage("Aduh sori nih Bestie, koneksi gue lagi agak ngelag dikit. Boleh spill lagi pertanyaannya? ☕");
     } finally {
       isThinking = false;
     }

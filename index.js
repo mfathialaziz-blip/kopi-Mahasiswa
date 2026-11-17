@@ -17,8 +17,35 @@ const cors = require("cors");
 const qrcode = require("qrcode-terminal");
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 
+// ===================================================
+// LOAD ENVIRONMENT VARIABLES (.env)
+// ===================================================
+const envFilePath = path.join(__dirname, ".env");
+if (fs.existsSync(envFilePath)) {
+  try {
+    const envContent = fs.readFileSync(envFilePath, "utf8");
+    envContent.split(/\r?\n/).forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+        const idx = trimmed.indexOf("=");
+        const key = trimmed.slice(0, idx).trim();
+        const val = trimmed.slice(idx + 1).trim();
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    });
+    console.log("🌱 [.env] Konfigurasi environment berhasil dimuat.");
+  } catch (err) {
+    console.warn("⚠️ [.env] Gagal membaca file .env:", err.message);
+  }
+}
+
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "..";
+const OPENROUTER_DEFAULT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL || "google/gemini-2.5-flash";
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 const APP_URL = process.env.APP_URL || "https://kopi.test";
 const MEMBERS_FILE = path.join(__dirname, "members.json");
 
@@ -76,6 +103,141 @@ function formatMenuContext(menuList) {
     m => `- ${m.nama_menu} (${m.kategori}): Rp${Number(m.harga).toLocaleString("id-ID")} [Stok: ${m.stok}]`
   );
   return `Daftar Menu Resmi Kopi Mahasiswa Saat Ini (Database MySQL):\n${lines.join("\n")}`;
+}
+
+/**
+ * Mengambil ringkasan data transaksi & omset akurat secara real-time dari database MySQL.
+ * Juga mengembalikan topItemsArr (array of objects) untuk keperluan deterministik.
+ */
+async function getTransactionMetricsFromDB() {
+  try {
+    const [rows] = await dbPool.query(`
+      SELECT 
+        COUNT(*) AS total_orders, 
+        COALESCE(SUM(total_omset), 0) AS total_revenue,
+        COALESCE(AVG(total_omset), 0) AS avg_order
+      FROM pesanan 
+      WHERE status != 'Batal' AND status != 'failed'
+    `);
+    const totalOrders = rows && rows[0] ? Number(rows[0].total_orders || 0) : 0;
+    const totalRevenue = rows && rows[0] ? Number(rows[0].total_revenue || 0) : 0;
+    const avgOrder = rows && rows[0] ? Math.round(Number(rows[0].avg_order || 0)) : 0;
+
+    let topItems = "";
+    let topItemsArr = [];
+    try {
+      const [topRows] = await dbPool.query(`
+        SELECT pd.nama_menu, SUM(pd.jumlah) AS total_terjual,
+               SUM(pd.subtotal) AS total_pendapatan
+        FROM pesanan_detail pd
+        JOIN pesanan p ON p.id = pd.pesanan_id
+        WHERE p.status != 'Batal' AND p.status != 'failed'
+        GROUP BY pd.nama_menu 
+        ORDER BY total_terjual DESC 
+        LIMIT 10
+      `);
+      if (topRows && topRows.length > 0) {
+        topItemsArr = topRows.map(r => ({
+          nama: r.nama_menu,
+          terjual: Number(r.total_terjual || 0),
+          pendapatan: Number(r.total_pendapatan || 0)
+        }));
+        topItems = topItemsArr
+          .slice(0, 5)
+          .map((r, i) => `${i + 1}. ${r.nama}: ${r.terjual} porsi (Rp ${r.pendapatan.toLocaleString("id-ID")})`)
+          .join("\n");
+      }
+    } catch (e) {
+      // Fallback jika kolom harga_satuan tidak tersedia
+      try {
+        const [topRows2] = await dbPool.query(`
+          SELECT nama_menu, SUM(jumlah) AS total_terjual 
+          FROM pesanan_detail 
+          GROUP BY nama_menu 
+          ORDER BY total_terjual DESC 
+          LIMIT 10
+        `);
+        if (topRows2 && topRows2.length > 0) {
+          topItemsArr = topRows2.map(r => ({ nama: r.nama_menu, terjual: Number(r.total_terjual || 0), pendapatan: 0 }));
+          topItems = topItemsArr
+            .slice(0, 5)
+            .map((r, i) => `${i + 1}. ${r.nama}: ${r.terjual} porsi`)
+            .join("\n");
+        }
+      } catch (e2) { }
+    }
+
+    return { totalOrders, totalRevenue, avgOrder, topItems, topItemsArr };
+  } catch (err) {
+    console.warn("⚠️ [DB Metrics Error]:", err.message);
+    return { totalOrders: 0, totalRevenue: 0, avgOrder: 0, topItems: "", topItemsArr: [] };
+  }
+}
+
+/**
+ * Mengambil detail transaksi terbaru (20 order) untuk context AI Admin.
+ * Menampilkan: nama pembeli, item yang dibeli, jumlah qty, subtotal.
+ */
+async function getRecentTransactionDetails() {
+  try {
+    const [rows] = await dbPool.query(`
+      SELECT p.nama_pelanggan, p.kode_transaksi, p.total_omset, p.status,
+             pd.nama_menu, pd.jumlah, pd.subtotal
+      FROM pesanan p
+      JOIN pesanan_detail pd ON pd.pesanan_id = p.id
+      WHERE p.status != 'Batal' AND p.status != 'failed'
+      ORDER BY p.id DESC
+      LIMIT 100
+    `);
+    if (!rows || rows.length === 0) return "Belum ada rincian transaksi tersedia.";
+
+    // Group by kode_transaksi
+    const grouped = {};
+    for (const r of rows) {
+      const kode = r.kode_transaksi || "TX";
+      if (!grouped[kode]) {
+        grouped[kode] = {
+          nama: r.nama_pelanggan || "Tamu",
+          total: Number(r.total_omset || 0),
+          items: []
+        };
+      }
+      grouped[kode].items.push(`${r.nama_menu} x${r.jumlah}`);
+    }
+
+    const lines = Object.entries(grouped)
+      .slice(0, 20)
+      .map(([kode, tx]) => `- ${tx.nama} [${kode}]: ${tx.items.join(", ")} | Total: Rp ${tx.total.toLocaleString("id-ID")}`);
+    return lines.join("\n");
+  } catch (err) {
+    console.warn("⚠️ [Recent TX Error]:", err.message);
+    return "Data rincian transaksi tidak dapat diambil.";
+  }
+}
+
+/**
+ * Format context menu yang lebih kaya untuk system prompt AI Admin.
+ * Menyertakan kategori, harga, stok, dan status ketersediaan.
+ */
+function formatMenuContextRich(menuList) {
+  if (!menuList || menuList.length === 0) {
+    return "Daftar Menu Resmi: Data menu belum tersedia di database.";
+  }
+  const byKategori = {};
+  menuList.forEach(m => {
+    const kat = (m.kategori || "Lainnya").trim();
+    if (!byKategori[kat]) byKategori[kat] = [];
+    byKategori[kat].push(m);
+  });
+  const sections = Object.entries(byKategori).map(([kat, items]) => {
+    const lines = items.map(m => {
+      const stok = Number(m.stok !== undefined ? m.stok : 10);
+      const status = stok <= 0 ? "HABIS" : stok <= 3 ? `KRITIS (${stok})` : `OK (${stok})`;
+      return `  - ${m.nama_menu}: Rp${Number(m.harga).toLocaleString("id-ID")} [Stok: ${status}]`;
+    });
+    return `[${kat}]\n${lines.join("\n")}`;
+  });
+  return `=== KATALOG MENU RESMI (MySQL Real-Time) ===\n${sections.join("\n\n")}`;
 }
 
 // ===================================================
@@ -345,29 +507,47 @@ const MENU_CATALOG = [
 // ===================================================
 
 /**
- * Format nomor WhatsApp ke format standar 62... @c.us
- * Aman dari karakter non-angka dan awalan '0' atau '8'
+ * Sanitasi dan format nomor WhatsApp ke format standar internasional: 628... @c.us
+ * - Menghapus semua karakter non-angka dan suffix @c.us
+ * - Normalisasi awalan '08', '0', '8', '6208', atau '0062' menjadi standar resmi '628...'
+ * - Memastikan panjang digit valid (antara 10 s.d. 16 digit angka)
+ * - Mengembalikan format string resmi WhatsApp Web: "<nomor_angka>@c.us"
+ * 
+ * @param {string|number} phone
+ * @returns {string|null}
  */
 function formatWhatsAppNumber(phone) {
   if (!phone) return null;
-  // Hapus semua karakter non-angka
-  let clean = String(phone).replace(/\D/g, "");
-  if (!clean) return null;
 
-  // Ubah awalan '0' menjadi '62'
-  if (clean.startsWith("0")) {
-    clean = "62" + clean.slice(1);
-  } else if (clean.startsWith("8")) {
-    clean = "62" + clean;
+  // 1. Ubah ke string dan buang suffix @c.us jika ada, lalu buang semua karakter non-digit
+  let str = String(phone).replace(/@c\.us$/i, "").trim();
+  let cleanDigits = str.replace(/\D/g, "");
+  if (!cleanDigits) return null;
+
+  // 2. Normalisasi berbagai format awalan nomor ke standar '628...'
+  if (cleanDigits.startsWith("0062")) {
+    cleanDigits = "62" + cleanDigits.slice(4);
+  } else if (cleanDigits.startsWith("6208")) {
+    cleanDigits = "628" + cleanDigits.slice(4);
+  } else if (cleanDigits.startsWith("08")) {
+    cleanDigits = "628" + cleanDigits.slice(2);
+  } else if (cleanDigits.startsWith("0")) {
+    cleanDigits = "62" + cleanDigits.slice(1);
+  } else if (cleanDigits.startsWith("8")) {
+    cleanDigits = "628" + cleanDigits.slice(1);
   }
 
-  // Hilangkan suffix jika sudah ada sebelumnya
-  clean = clean.replace(/@c\.us$/, "");
+  // 3. Validasi panjang nomor Indonesia standar (10 - 16 digit angka)
+  if (cleanDigits.length < 10 || cleanDigits.length > 16) {
+    return null;
+  }
 
-  // Pastikan panjang nomor wajar (minimal 9 digit)
-  if (clean.length < 9) return null;
+  // 4. Pastikan diawali dengan kode negara 62
+  if (!cleanDigits.startsWith("62")) {
+    return null;
+  }
 
-  return clean + "@c.us";
+  return cleanDigits + "@c.us";
 }
 
 /**
@@ -505,8 +685,8 @@ client.on("disconnected", (reason) => {
 // ===================================================
 // 4. PESAN CHAT MASUK (client.on('message')) & 9 KATA KUNCI
 // ===================================================
-const FALLBACK_KEYWORD_MESSAGE = 
-`Waduh, bot belum paham nih, Bestie! 😅
+const FALLBACK_KEYWORD_MESSAGE =
+  `Waduh, bot belum paham nih, Bestie! 😅
 
 Coba ketik kata kunci ini:
 1. 📋 menu
@@ -538,8 +718,8 @@ client.on("message", async (msg) => {
     // 4A. CEK JAM OPERASIONAL TOKO (09.00 - 23.00 WIB, MINGGU TUTUP)
     // ---------------------------------------------------
     if (!isStoreOpen()) {
-      const closedReply = 
-`Halo kak! ☕ Terima kasih sudah menghubungi *Kopi Mahasiswa*.
+      const closedReply =
+        `Halo kak! ☕ Terima kasih sudah menghubungi *Kopi Mahasiswa*.
 
 Saat ini kedai kami sedang *TUTUP*. 🙏
 
@@ -568,9 +748,9 @@ Terima kasih atas pengertiannya! Sampai ketemu di jam ngopi besok ya kak! ✨`;
       try {
         console.log(`🖼️ [Media Sending] Mengunduh dan mengirim foto: ${specificItem.name}`);
         const media = await MessageMedia.fromUrl(specificItem.imageUrl, { unsafeMime: true });
-        
-        const caption = 
-`☕ *${specificItem.name}*
+
+        const caption =
+          `☕ *${specificItem.name}*
 💰 *Harga:* Rp ${specificItem.price.toLocaleString("id-ID")}
 🏷️ *Kategori:* ${specificItem.categoryLabel}
 
@@ -584,8 +764,8 @@ ${specificItem.description}
         return;
       } catch (mediaErr) {
         console.error(`❌ [Media Error] Gagal mengirim MessageMedia untuk ${specificItem.name}:`, mediaErr.message);
-        const fallbackMsg = 
-`☕ *${specificItem.name}*
+        const fallbackMsg =
+          `☕ *${specificItem.name}*
 💰 *Harga:* Rp ${specificItem.price.toLocaleString("id-ID")}
 📝 ${specificItem.description}
 
@@ -633,8 +813,8 @@ Silakan pesan langsung di kasir atau via web: ${APP_URL}/ ✨`;
 
     // 2. 📶 WIFI
     if (hasWord(text, ["wifi", "wifii", "wi-fi", "password wifi", "pw wifi", "pw", "2", "2."])) {
-      const wifiReply = 
-`📶 *INFO WI-FI KOPI MAHASISWA* ☕
+      const wifiReply =
+        `📶 *INFO WI-FI KOPI MAHASISWA* ☕
 
 • *SSID:* KopiMahasiswa_5G (atau KopiMahasiswa_2.4G)
 • *Password:* \`nugassampaisubuh\`
@@ -647,8 +827,8 @@ Silakan pesan langsung di kasir atau via web: ${APP_URL}/ ✨`;
 
     // 3. 📍 LOKASI
     if (hasWord(text, ["lokasi", "alamat", "dimana", "tempat", "posisi", "maps", "3", "3."])) {
-      const lokasiText = 
-`📍 *LOKASI KOPI MAHASISWA:*
+      const lokasiText =
+        `📍 *LOKASI KOPI MAHASISWA:*
 
 Jl. Kampus Raya No. 42 (Hanya 100 meter dari Gerbang Utama Kampus)
 Google Maps: https://maps.google.com/?q=Kopi+Mahasiswa
@@ -660,8 +840,8 @@ Google Maps: https://maps.google.com/?q=Kopi+Mahasiswa
 
     // 4. 🎟️ PROMO
     if (hasWord(text, ["promo", "diskon", "voucher", "hemat", "potongan", "4", "4."])) {
-      const promoText = 
-`🎟️ *PROMO AKTIF KOPI MAHASISWA* ☕
+      const promoText =
+        `🎟️ *PROMO AKTIF KOPI MAHASISWA* ☕
 
 1. 🎓 *Diskon Member 10%:*
 Daftar member di web kami (gratis) & dapatkan potongan 10% untuk semua pesananmu!
@@ -680,8 +860,8 @@ Tunjukkan nomor HP member kakak saat memesan di kasir ya Bestie! ✨`;
 
     // 5. 👤 REGISTER
     if (hasWord(text, ["register", "registrasi", "daftar member", "daftar", "pendaftaran", "buat akun", "gabung member", "gabung", "5", "5."])) {
-      const registerText = 
-`👤 *PENDAFTARAN MEMBER KOPI MAHASISWA* ☕
+      const registerText =
+        `👤 *PENDAFTARAN MEMBER KOPI MAHASISWA* ☕
 
 Mau nikmati Diskon 10% setiap hari & reward kopi gratis pas ultah? Yuk daftar, 100% GRATIS!
 
@@ -701,8 +881,8 @@ Tunggu apa lagi? Yuk gabung jadi keluarga Sobat Ngopi sekarang! ✨`;
       const members = getMembers();
       const memberCount = members.length;
 
-      const memberText = 
-`💳 *INFO MEMBERSHIP KOPI MAHASISWA* 🎓
+      const memberText =
+        `💳 *INFO MEMBERSHIP KOPI MAHASISWA* 🎓
 
 Saat ini sudah ada *${memberCount} Sobat Ngopi* yang resmi terdaftar sebagai member aktif!
 
@@ -720,8 +900,8 @@ Ketik *register* untuk mendaftar sekarang atau kunjungi website kami di:
 
     // 7. ⭐ ULASAN
     if (hasWord(text, ["ulasan", "review", "testimoni", "rating", "feedback", "saran", "kritik", "7", "7."])) {
-      const ulasanText = 
-`⭐ *ULASAN & TESTIMONI KOPI MAHASISWA* 🌟
+      const ulasanText =
+        `⭐ *ULASAN & TESTIMONI KOPI MAHASISWA* 🌟
 
 Kepuasan dan kenyamanan Bestie adalah prioritas utama kami! Ulasanmu sangat berarti untuk kemajuan kedai kami.
 
@@ -737,8 +917,8 @@ Terima kasih atas dukungan terbaik dari Sobat Ngopi! 🙏☕✨`;
 
     // 8. 👨💻 ADMIN
     if (hasWord(text, ["admin", "owner", "cs", "customer service", "bantuan admin", "kontak admin", "hubungi", "kontak", "8", "8."])) {
-      const adminText = 
-`👨💻 *HUBUNGI ADMIN / CUSTOMER SERVICE* ☕
+      const adminText =
+        `👨💻 *HUBUNGI ADMIN / CUSTOMER SERVICE* ☕
 
 Butuh bantuan reservasi meja, pemesanan katering event kampus, kendala transaksi, atau kerjasama?
 
@@ -756,8 +936,8 @@ Silakan tinggalkan pesan detail kebutuhanmu di sini, staf kami akan segera meres
     // 9. 🤖 AI (Jika hanya mengetik kata kunci "ai" / "9")
     const lower = text.toLowerCase().trim();
     if (["ai", "9", "9.", "tanya ai", "bot", "barista ai", "kopi ai"].includes(lower)) {
-      const aiIntro = 
-`🤖 *KOPIAI VIRTUAL BARISTA* ☕✨
+      const aiIntro =
+        `🤖 *KOPIAI VIRTUAL BARISTA* ☕✨
 
 Halo Bestie! Saya KopiAI, barista pintar yang siap menemani dan menjawab pertanyaanmu 24/7.
 
@@ -795,12 +975,13 @@ Silakan ketik pertanyaanmu sekarang, Bestie! 👇`;
       const systemPrompt = `Kamu adalah "KopiAI Virtual Barista" dari kedai Kopi Mahasiswa.
 Lawan bicaramu adalah pelanggan / mahasiswa yang sedang bertanya melalui WhatsApp.
 
-INSTRUKSI PENTING:
-- Panggil pelanggan dengan ramah dan santai, gunakan sebutan "Bestie" atau "kak".
-- Jawablah selalu dalam Bahasa Indonesia yang ramah, hangat, santai, dan solutif khas anak muda/mahasiswa.
-- Jawab secara SINGKAT, PADAT, dan TUNTAS (maksimal 2-3 kalimat saja). Pastikan kalimat selesai sampai tanda titik tanpa terpotong.
-- KONSISTENSI DATA MENU: HANYA sebutkan menu yang ada di daftar menu resmi database MySQL di bawah ini. Jika pelanggan menanyakan menu yang tidak tersedia, katakan dengan sopan bahwa menu tersebut belum ada dan berikan rekomendasi menu lain dari database.
-- Jika pelanggan hanya menyapa (halo/hai/p/assalamualaikum), balas ramah dan infokan bahwa mereka bisa tanya rekomendasi menu atau ketik salah satu dari 9 kata kunci bantuan (ketik *bantuan*).
+INSTRUKSI PENTING & GAYA BAHASA GEN Z:
+- Gunakan gaya bahasa anak muda yang asik, santai, dan gaul (pake sapaan "lu-gue", "Bestie", "chill", "auto melek", "spill").
+- HINDARI kalimat kaku/formal atau kalimat kepotong. Jawaban HARUS tuntas sampai tanda titik atau emoji penutup.
+- Jika pelanggan bertanya identitasnya (seperti "siapa saya", "siapa gue", "siapa aku"): jawab interaktif: "Lu tuh member setia Kopi Mahasiswa, Bestie! Mau disiapin kopi apa nih biar gak ngantuk dan tetep chill nugas? ☕✨"
+- Jawab secara SINGKAT, PADAT, dan TUNTAS (maksimal 2-3 kalimat saja).
+- KONSISTENSI DATA MENU: HANYA sebutkan menu yang ada di daftar menu resmi database MySQL di bawah ini. Jika pelanggan menanyakan menu yang tidak tersedia, katakan bahwa menu tersebut belum ada dan spill menu alternatif lain yang seger/enak.
+- Jika pelanggan hanya menyapa (halo/hai/p/assalamualaikum/yo), balas gaul, sapa "Bestie", dan tawarin menu kopi favorit.
 
 ${menuContext}
 
@@ -958,55 +1139,61 @@ app.get("/qr", (req, res) => {
 app.post(["/api/notif-member", "/api/register"], async (req, res) => {
   const startTime = Date.now();
   try {
-    const { name, campus, phone, cleanPhone, memberName: reqMemberName, password } = req.body || {};
+    // 1. Ekstrak input request dengan variabel lokal yang terisolasi
+    const inputName = String(req.body.name || req.body.memberName || "").trim();
+    const inputCampus = String(req.body.campus || "Mahasiswa").trim();
+    const inputPhone = String(req.body.phone || req.body.cleanPhone || req.body.whatsapp || req.body.nomorHp || "").trim();
+    const inputPassword = req.body.password ? String(req.body.password).trim() : "";
 
-    console.log("\n-------------------------------------------------------");
-    console.log(`📨 [API Notif Register] Menerima pendaftaran member:`);
-    console.log(`👤 Nama   : ${name || reqMemberName}`);
-    console.log(`🎓 Kampus : ${campus || "Mahasiswa"}`);
-    console.log(`📱 No HP  : ${phone || cleanPhone}`);
-    console.log("-------------------------------------------------------");
+    console.log("\n=======================================================");
+    console.log(`📨 [API Register Member] Menerima pendaftaran member baru:`);
+    console.log(`👤 Nama   : "${inputName}"`);
+    console.log(`🎓 Kampus : "${inputCampus}"`);
+    console.log(`📱 No HP  : "${inputPhone}"`);
 
-    // Validasi parameter nama dan telepon
-    const targetPhone = cleanPhone || phone;
-    if (!targetPhone) {
-      console.warn("⚠️ [API Notif Member] Nomor telepon tidak disediakan dalam request.");
+    // 2. Validasi Input Nomor HP
+    if (!inputPhone) {
+      console.warn("⚠️ [API Register Ditolak] Nomor telepon tidak diisi dalam request.");
       return res.status(400).json({
+        status: "error",
         success: false,
-        message: "Nomor telepon (phone / cleanPhone) wajib diisi."
+        message: "Nomor telepon wajib diisi."
       });
     }
 
-    // Format nomor WhatsApp aman (mengubah 08... ke 628...@c.us)
-    const formattedNumber = formatWhatsAppNumber(targetPhone);
-    if (!formattedNumber) {
-      console.warn(`⚠️ [API Notif Member] Format nomor telepon tidak valid: "${targetPhone}"`);
+    // 3. Sanitasi Ketat Nomor WhatsApp (Format: 62... @c.us)
+    const targetWhatsAppId = formatWhatsAppNumber(inputPhone);
+    if (!targetWhatsAppId) {
+      console.warn(`⚠️ [API Register Ditolak] Format nomor telepon tidak valid: "${inputPhone}"`);
       return res.status(400).json({
+        status: "error",
         success: false,
-        message: "Format nomor telepon tidak valid. Pastikan nomor benar."
+        message: "Format nomor telepon tidak valid. Pastikan nomor diawali '08' atau '628' dengan minimal 10 digit angka."
       });
     }
 
-    const memberName = reqMemberName || name || "Sobat Ngopi";
+    const memberName = inputName || "Sobat Ngopi";
+    const cleanPhoneDigits = targetWhatsAppId.replace(/@c\.us$/, "");
 
-    // Simpan data member ke file JSON (members.json)
+    // 4. Simpan data member ke file JSON (members.json) menggunakan variabel lokal
     const savedRecord = saveMember({
       name: memberName,
-      phone: targetPhone,
-      campus: campus || "Mahasiswa",
-      password: password || "",
+      phone: cleanPhoneDigits,
+      cleanPhone: cleanPhoneDigits,
+      campus: inputCampus,
+      password: inputPassword,
       registeredAt: new Date().toISOString()
     });
 
-    // Pesan sambutan hangat pendaftaran member baru (NOTIF REGISTER)
-    const welcomeMessage = 
-`☕ *SELAMAT DATANG DI KOPI MAHASISWA* ☕
+    // 5. Pesan sambutan pendaftaran member baru
+    const welcomeMessage =
+      `☕ *SELAMAT DATANG DI KOPI MAHASISWA* ☕
 
 Halo Kak *${memberName}*! 🎉
 Selamat! Akun Member Kopi Mahasiswa kamu resmi aktif.
 
-🎓 *Kampus:* ${campus || "Mahasiswa"}
-📱 *Nomor:* ${targetPhone}
+🎓 *Kampus:* ${inputCampus}
+📱 *Nomor:* ${cleanPhoneDigits}
 🎟️ *Voucher Diskon Pertama:* *MHS10OFF* (Diskon 10%)
 
 ✨ *Keuntungan Member Kamu:*
@@ -1016,38 +1203,53 @@ Selamat! Akun Member Kopi Mahasiswa kamu resmi aktif.
 
 Tunjukkan pesan ini atau Kartu Member Digital ke kasir saat memesan. Selamat ngopi & semangat nugas! ☕✨`;
 
-    // Cek kesiapan WhatsApp Client
-    if (!isClientReady) {
-      console.warn(`⚠️ [API Notif Member] Member "${memberName}" disimpan ke members.json, tetapi WhatsApp Client belum login/ready.`);
+    // 6. Cek kesiapan WhatsApp Client
+    const isReady = isClientReady || (client && client.info && client.info.wid);
+    if (!isReady || !client) {
+      console.warn(`⚠️ [API Register] Member "${memberName}" disimpan, tetapi WhatsApp Client belum login/ready.`);
       return res.status(200).json({
         status: "success",
         success: true,
-        message: "Data member berhasil disimpan ke sistem! (Notifikasi WA tertunda karena WhatsApp Bot belum dihubungkan).",
-        recipient: formattedNumber,
+        waSent: false,
+        message: "Data member berhasil disimpan ke sistem! (Notifikasi WA tertunda karena WhatsApp Bot belum ready).",
+        recipient: targetWhatsAppId,
         previewMessage: welcomeMessage,
         member: savedRecord
       });
     }
 
-    // Kirim pesan WhatsApp
-    console.log(`🚀 [API Notif Member] Mengirim pesan WhatsApp ke: ${formattedNumber}...`);
-    const sendResult = await client.sendMessage(formattedNumber, welcomeMessage);
+    // 7. Pengiriman Eksklusif ke Nomor Peminta (targetWhatsAppId)
+    console.log(`🚀 [API Register] Mengirim pesan WA eksklusif ke: ${targetWhatsAppId}`);
+    let sendResult;
+    try {
+      sendResult = await client.sendMessage(targetWhatsAppId, welcomeMessage);
+    } catch (sendErr) {
+      if (sendErr && (sendErr.message || "").includes("detached Frame")) {
+        console.warn("⚠️ [WA Bot Retry] Puppeteer detached frame, mencoba mengirim ulang dalam 1 detik...");
+        await new Promise(r => setTimeout(r, 1000));
+        sendResult = await client.sendMessage(targetWhatsAppId, welcomeMessage);
+      } else {
+        throw sendErr;
+      }
+    }
 
     const elapsed = Date.now() - startTime;
-    console.log(`✅ [API Notif Member Success] Pesan notifikasi terkirim dalam ${elapsed}ms ke ${formattedNumber}`);
+    console.log(`✅ [API Register Success] Pesan notifikasi terkirim eksklusif dalam ${elapsed}ms ke: ${targetWhatsAppId}`);
+    console.log("=======================================================\n");
 
     return res.status(200).json({
       status: "success",
       success: true,
+      waSent: true,
       message: "Notifikasi pendaftaran member berhasil dikirim ke WhatsApp dan disimpan!",
-      recipient: formattedNumber,
+      recipient: targetWhatsAppId,
       messageId: sendResult && sendResult.id ? sendResult.id._serialized : "sent",
       member: savedRecord,
       elapsedMs: elapsed
     });
 
   } catch (error) {
-    console.error("❌ [API Notif Member Error] Gagal mengirim pesan notifikasi WhatsApp:", error);
+    console.error("❌ [API Notif Member Error] Gagal memproses pendaftaran:", error);
     return res.status(500).json({
       status: "error",
       success: false,
@@ -1063,14 +1265,24 @@ Tunjukkan pesan ini atau Kartu Member Digital ke kasir saat memesan. Selamat ngo
 app.post(["/api/login", "/api/notif-login"], async (req, res) => {
   const startTime = Date.now();
   try {
-    const inputPhone = String(req.body.phone || req.body.nomorHp || req.body.no_hp || req.body.whatsapp || "").trim();
+    // 1. Ekstrak input request dengan variabel lokal yang terisolasi per-request
+    const inputPhone = String(
+      req.body.phone ||
+      req.body.nomorHp ||
+      req.body.no_hp ||
+      req.body.whatsapp ||
+      req.body.target ||
+      req.body.recipient ||
+      req.body.number ||
+      ""
+    ).trim();
     const inputPassword = req.body.password ? String(req.body.password).trim() : null;
 
     console.log("\n=======================================================");
-    console.log("📥 [API Login] Menerima request login member:");
+    console.log("📥 [API Login Member] Menerima request login member:");
     console.log(`📱 Input Phone: "${inputPhone}"`);
 
-    // 1. Validasi Input Nomor HP
+    // 2. Validasi Input Nomor HP
     if (!inputPhone) {
       console.warn("⚠️ [API Login Ditolak] Nomor HP tidak diisi dalam request.");
       return res.status(400).json({
@@ -1080,58 +1292,67 @@ app.post(["/api/login", "/api/notif-login"], async (req, res) => {
       });
     }
 
-    // 1. Baca file members.json secara sinkron dengan benar
-    let members = [];
-    if (fs.existsSync(MEMBERS_FILE)) {
+    // 3. Sanitasi Ketat Nomor WhatsApp Peminta (Format: 628... @c.us)
+    const targetWhatsAppId = formatWhatsAppNumber(inputPhone);
+    if (!targetWhatsAppId) {
+      console.warn(`⚠️ [API Login Ditolak] Format nomor HP tidak valid: "${inputPhone}"`);
+      return res.status(400).json({
+        status: "error",
+        success: false,
+        message: "Format nomor HP tidak valid. Pastikan nomor diawali '08' atau '628' dengan minimal 10 digit angka."
+      });
+    }
+
+    // Ambil digit angka murni nomor peminta (contoh: 6285173022407)
+    const cleanPhoneDigits = targetWhatsAppId.replace(/@c\.us$/, "");
+    const indoZeroDigits = "0" + cleanPhoneDigits.slice(2); // contoh: 085173022407
+
+    // 4. Baca file members.json secara sinkron
+    let members = getMembers();
+    if (members.length === 0 && fs.existsSync(MEMBERS_FILE)) {
       try {
         const fileContent = fs.readFileSync(MEMBERS_FILE, "utf8");
         members = JSON.parse(fileContent) || [];
       } catch (err) {
         console.error("❌ [API Login] Gagal membaca members.json:", err.message);
-        members = getMembers();
       }
-    } else {
-      members = getMembers();
     }
 
-    // 2. Lakukan perulangan / .find() untuk mencocokkan nomor HP
-    // Pastikan konversi ke string dilakukan di KEDUA belah pihak agar tidak error tipe data:
-    const reqPhone = String(req.body.phone || inputPhone).trim();
-    const cleanInput = reqPhone.replace(/\D/g, "");
+    // 5. Cocokkan nomor HP peminta secara presisi dengan data member
+    let foundMember = members.find(m => {
+      const mRaw = String(m.phone || m.cleanPhone || m.whatsapp || m.no_hp || "").replace(/\D/g, "");
+      if (!mRaw) return false;
 
-    // Helper normalisasi format nomor Indonesia (08xxx vs 628xxx)
-    const normalizeIndo = (str) => {
-      let digits = String(str || "").replace(/\D/g, "");
-      if (digits.startsWith("62")) digits = "0" + digits.slice(2);
-      return digits;
-    };
-    const normInput = normalizeIndo(reqPhone);
-
-    const foundMember = members.find(m => {
-      const mPhone = String(m.phone || "").trim();
-      const mWa = String(m.whatsapp || "").trim();
-      const mNoHp = String(m.no_hp || "").trim();
-      const mClean = String(m.cleanPhone || mPhone).replace(/\D/g, "");
+      let mIndo62 = mRaw;
+      if (mIndo62.startsWith("0")) {
+        mIndo62 = "62" + mIndo62.slice(1);
+      } else if (mIndo62.startsWith("8")) {
+        mIndo62 = "62" + mIndo62;
+      }
 
       return (
-        mPhone === reqPhone ||
-        mWa === reqPhone ||
-        mNoHp === reqPhone ||
-        (cleanInput && mClean && cleanInput === mClean) ||
-        (normInput && normalizeIndo(mPhone) === normInput) ||
-        (normInput && normalizeIndo(mClean) === normInput) ||
-        (normInput && normalizeIndo(mWa) === normInput) ||
-        (normInput && normalizeIndo(mNoHp) === normInput)
+        mRaw === cleanPhoneDigits ||
+        mRaw === indoZeroDigits ||
+        mIndo62 === cleanPhoneDigits ||
+        cleanPhoneDigits.endsWith(mRaw) ||
+        mRaw.endsWith(cleanPhoneDigits)
       );
     });
 
-    // 4. Jika TIDAK KETEMU, berikan console.log di terminal backend
-    // yang mencetak isi req.body.phone yang di-input user dan seluruh isi array members
-    if (!foundMember) {
-      console.log("❌ [API Login Member TIDAK KETEMU]");
-      console.log("📱 req.body.phone yang di-input user:", req.body.phone);
-      console.log("👥 Seluruh isi array members:", JSON.stringify(members, null, 2));
+    // Fallback Fleksibel: Jika request dikirim dari backend PHP (login.php sudah memverifikasi akun member)
+    if (!foundMember && (req.body.name || req.body.memberName || req.body.message)) {
+      console.log(`ℹ️ [API Login] Member valid dari request payload: ${req.body.name || req.body.memberName || 'Member'}`);
+      foundMember = {
+        name: req.body.name || req.body.memberName || "Member",
+        campus: req.body.campus || "Mahasiswa",
+        phone: cleanPhoneDigits,
+        cleanPhone: cleanPhoneDigits,
+        status: "Aktif"
+      };
+    }
 
+    if (!foundMember) {
+      console.log(`❌ [API Login Member TIDAK KETEMU] Nomor input: "${cleanPhoneDigits}" (${targetWhatsAppId})`);
       return res.status(404).json({
         status: "error",
         success: false,
@@ -1149,8 +1370,11 @@ app.post(["/api/login", "/api/notif-login"], async (req, res) => {
       });
     }
 
-    // 3. Jika foundMember ketemu DAN password cocok:
-    console.log("Login Success for:", foundMember.name, "Phone:", foundMember.phone);
+    const memberName = foundMember.name || req.body.name || req.body.memberName || "Member";
+    const memberCampus = foundMember.campus || req.body.campus || "Mahasiswa";
+    const memberIdCode = foundMember.memberId || `KM-MBR-${String(foundMember.id || Date.now()).slice(-4)}`;
+
+    console.log(`🔑 [API Login Success] Member: "${memberName}" | Kampus: "${memberCampus}" | Target WA: ${targetWhatsAppId}`);
 
     // Format tanggal & waktu WIB
     const loginTime = new Date().toLocaleString("id-ID", {
@@ -1159,69 +1383,84 @@ app.post(["/api/login", "/api/notif-login"], async (req, res) => {
       timeStyle: "medium"
     }) + " WIB";
 
-    // Konversi nomor tujuan otomatis menggunakan format standar kode negara '62' (628xxx@c.us)
-    const targetPhone = String(foundMember.cleanPhone || foundMember.phone || foundMember.whatsapp || foundMember.no_hp || inputPhone || "").trim();
-    const targetWhatsAppId = formatWhatsAppNumber(targetPhone);
+    // Pesan notifikasi login eksklusif untuk member peminta
+    const loginMessage = (req.body && (req.body.message || req.body.msg || req.body.text || req.body.pesan))
+      ? (req.body.message || req.body.msg || req.body.text || req.body.pesan)
+      : `☕ *KOPI MAHASISWA — NOTIFIKASI LOGIN AKUN* ☕\n\nHalo Kak *${memberName}*! Kamu berhasil login di Kopi Mahasiswa pada ${loginTime}. Selamat menikmati kopi favoritmu! ☕\n\n🎓 *Kampus:* ${memberCampus}\n📱 *Nomor:* ${cleanPhoneDigits}\n🆔 *ID Member:* ${memberIdCode}\n\n_Pemberitahuan ini dikirim otomatis demi keamanan akun Anda._`;
 
-    const memberCampus = foundMember.campus || "Mahasiswa";
-    const memberIdCode = foundMember.memberId || `KM-MBR-${String(foundMember.id || Date.now()).slice(-4)}`;
-
-    // Format pesan notifikasi login sesuai spesifikasi:
-    // "Halo [Nama Member]! Kamu berhasil login di Kopi Mahasiswa pada [Waktu Login]. Selamat menikmati kopi favoritmu! ☕"
-    const loginMessage = req.body && req.body.message
-      ? req.body.message
-      : `☕ *KOPI MAHASISWA — NOTIFIKASI LOGIN AKUN* ☕\n\nHalo ${foundMember.name}! Kamu berhasil login di Kopi Mahasiswa pada ${loginTime}. Selamat menikmati kopi favoritmu! ☕\n\n🎓 *Kampus:* ${memberCampus}\n📱 *Nomor:* ${foundMember.phone || targetPhone}\n🆔 *ID Member:* ${memberIdCode}\n\n_Pemberitahuan ini dikirim otomatis demi keamanan akun Anda._`;
-
-    // 3 & 4. Blok Try-Catch Pengiriman WA & Penanganan Sesi Bot
-    try {
-      console.log("Mencoba mengirim notif WA ke:", targetPhone);
-
-      // Cek apakah sesi bot WhatsApp sudah ready / authenticated
-      const isReady = isClientReady || (client && client.info && client.info.wid);
-      if (!isReady || !client) {
-        throw new Error("Sesi bot WhatsApp belum ready / authenticated. Notifikasi WA ditunda.");
-      }
-
-      if (!targetWhatsAppId) {
-        throw new Error(`Format nomor HP tidak valid untuk WhatsApp: "${targetPhone}"`);
-      }
-
-      const sendResult = await client.sendMessage(targetWhatsAppId, loginMessage);
-      console.log(`✅ [Notif Login] Pesan berhasil dikirim ke ${targetWhatsAppId}`);
-
-      const elapsed = Date.now() - startTime;
-      return res.status(200).json({
-        status: "success",
-        success: true,
-        waSent: true,
-        message: "Login berhasil dan notifikasi WhatsApp berhasil dikirim!",
-        recipient: targetWhatsAppId,
-        messageId: sendResult && sendResult.id ? sendResult.id._serialized : "sent",
-        member: foundMember,
-        elapsedMs: elapsed
-      });
-    } catch (err) {
-      console.warn(`⚠️ [Notif Login] Gagal kirim WA ke ${targetWhatsAppId}: ${err.message || err}`);
-
-      // Bot offline / WA belum konek — login tetap sukses, hanya notif WA yang gagal
+    // 6. Cek kesiapan sesi bot WhatsApp
+    const isReady = isClientReady || (client && client.info && client.info.wid);
+    if (!isReady || !client) {
+      console.warn(`⚠️ [API Login] Sesi bot WhatsApp belum ready, pengiriman notifikasi ke ${targetWhatsAppId} ditunda.`);
       return res.status(200).json({
         status: "success",
         success: true,
         waSent: false,
-        message: "Login berhasil! Notifikasi WA tertunda: " + (err ? (err.message || String(err)) : "Kendala pengiriman"),
+        message: "Login berhasil! Notifikasi WA tertunda karena bot WhatsApp belum terhubung.",
         recipient: targetWhatsAppId,
         member: foundMember,
-        waError: err ? (err.message || String(err)) : null,
         previewMessage: loginMessage
       });
     }
-  } catch (error) {
-    console.error("❌ [API Login Fatal Error] Terjadi kesalahan tak terduga pada server saat login:", error);
+
+    // 7. Pengiriman Eksklusif HANYA ke targetWhatsAppId peminta
+    console.log(`🚀 [API Login] Mengirim pesan WA eksklusif ke: ${targetWhatsAppId}`);
+    let sendResult = null;
+    let sendError = null;
+    try {
+      sendResult = await client.sendMessage(targetWhatsAppId, loginMessage);
+    } catch (sendErr) {
+      // Jika frame Puppeteer sempat lepas/detached saat page re-render, coba retry sekali
+      if (sendErr && (sendErr.message || "").includes("detached Frame")) {
+        console.warn("⚠️ [WA Bot Retry] Puppeteer detached frame, mencoba mengirim ulang dalam 1 detik...");
+        await new Promise(r => setTimeout(r, 1000));
+        try {
+          sendResult = await client.sendMessage(targetWhatsAppId, loginMessage);
+        } catch (retryErr) {
+          sendError = retryErr;
+        }
+      } else {
+        sendError = sendErr;
+      }
+    }
+
+    const elapsed = Date.now() - startTime;
+
+    if (sendError) {
+      console.error(`❌ [API Login Send WA Error] Gagal kirim ke ${targetWhatsAppId}:`, sendError.message);
+      return res.status(200).json({
+        status: "warning",
+        success: true,
+        waSent: false,
+        waError: sendError.message || String(sendError),
+        message: "Login member valid, namun pesan WhatsApp gagal dikirim: " + (sendError.message || String(sendError)),
+        recipient: targetWhatsAppId,
+        member: foundMember,
+        elapsedMs: elapsed
+      });
+    }
+
+    console.log(`✅ [Notif Login Success] Pesan berhasil dikirim eksklusif dalam ${elapsed}ms ke: ${targetWhatsAppId}`);
+    console.log("=======================================================\n");
+
+    return res.status(200).json({
+      status: "success",
+      success: true,
+      waSent: true,
+      message: "Login berhasil dan notifikasi WhatsApp berhasil dikirim!",
+      recipient: targetWhatsAppId,
+      messageId: sendResult && sendResult.id ? sendResult.id._serialized : "sent",
+      member: foundMember,
+      elapsedMs: elapsed
+    });
+
+  } catch (err) {
+    console.error(`❌ [API Login Fatal Error]:`, err);
     return res.status(500).json({
       status: "error",
       success: false,
       message: "Terjadi kesalahan pada server saat memproses login.",
-      error: error.message || String(error)
+      error: err.message || String(err)
     });
   }
 });
@@ -1231,7 +1470,7 @@ app.post(["/api/login", "/api/notif-login"], async (req, res) => {
 // ===================================================
 // Template pesan promo berkala sesuai spesifikasi:
 // "Halo [Nama Member]! Spesial promo 2 mingguan Kopi Mahasiswa! Dapatkan diskon menarik khusus hari ini. Cek menumu sekarang di https://kopi.test ☕ promo terbatas!"
-const DEFAULT_PROMO_TEMPLATE = 
+const DEFAULT_PROMO_TEMPLATE =
   "Halo [Nama Member]! Spesial promo 2 mingguan Kopi Mahasiswa! Dapatkan diskon menarik khusus hari ini. Cek menumu sekarang di https://kopi.test ☕ promo terbatas!";
 
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000; // 14 hari dalam ms (1.209.600.000 ms)
@@ -1392,16 +1631,111 @@ app.delete("/api/members/:id", (req, res) => {
 });
 
 // ===================================================
-// 6c. REST API: AI ADVISOR CHAT — BACKEND RELAY (/api/ai-chat)
+// 6c. REST API: AI CHAT — BACKEND RELAY (/api/ai-chat)
+// Mendukung OpenRouter (Universal Multi-Model) & Gemini
 // ===================================================
 // Node built-in https (no extra dependency needed)
 const https = require("https");
 
 /**
- * Relay helper: kirim request ke Gemini REST API dari backend Node.js
- * Menggunakan node built-in https agar tidak perlu install node-fetch.
+ * Panggil AI via OpenRouter API (Universal Multi-Model)
+ * Mendukung DeepSeek, Gemini 2.5 Flash, GPT-4o Mini, Llama 3.3, Mistral Small
  */
-function callGeminiBackend(apiKey, model, systemPrompt, userMessage, chatHistory = [], maxTokens = 300) {
+function callOpenRouterBackend(apiKey, model, systemPrompt, userMessage, chatHistory = [], maxTokens = 800) {
+  const openRouterKey = apiKey || process.env.OPENROUTER_API_KEY || "..";
+  const primaryModel = model || process.env.OPENROUTER_DEFAULT_MODEL || "google/gemini-2.5-flash";
+
+  // Fallback models jika model utama mengalami kendala
+  const candidateModels = Array.from(new Set([
+    primaryModel,
+    "google/gemini-2.5-flash",
+    "deepseek/deepseek-chat",
+    "openai/gpt-4o-mini",
+    "meta-llama/llama-3.3-70b-instruct"
+  ])).filter(Boolean);
+
+  const messages = [];
+  if (systemPrompt && systemPrompt.trim()) {
+    messages.push({ role: "system", content: systemPrompt.trim() });
+  }
+
+  const validHistory = (chatHistory || []).slice(-6);
+  validHistory.forEach(item => {
+    if (item && item.content && item.content.trim()) {
+      const role = item.role === "assistant" ? "assistant" : "user";
+      messages.push({ role, content: item.content.trim() });
+    }
+  });
+
+  messages.push({ role: "user", content: userMessage.trim() });
+
+  return new Promise(async (resolve, reject) => {
+    let lastError = null;
+
+    for (const curModel of candidateModels) {
+      try {
+        const payload = JSON.stringify({
+          model: curModel,
+          messages,
+          max_tokens: maxTokens,
+          temperature: 0.6
+        });
+
+        const reply = await new Promise((resInner, rejInner) => {
+          const req = https.request({
+            hostname: "openrouter.ai",
+            path: "/api/v1/chat/completions",
+            method: "POST",
+            headers: {
+              "Authorization": "Bearer " + openRouterKey,
+              "HTTP-Referer": APP_URL || "https://kopi.test",
+              "X-Title": "Kopi Mahasiswa",
+              "Content-Type": "application/json",
+              "Content-Length": Buffer.byteLength(payload)
+            }
+          }, (res) => {
+            let data = "";
+            res.on("data", chunk => { data += chunk; });
+            res.on("end", () => {
+              try {
+                const parsed = JSON.parse(data);
+                if (res.statusCode !== 200) {
+                  return rejInner(new Error(`Model ${curModel} HTTP ${res.statusCode}: ${parsed.error?.message || data}`));
+                }
+                const text = parsed.choices?.[0]?.message?.content || "";
+                resInner(text.trim());
+              } catch (e) {
+                rejInner(e);
+              }
+            });
+          });
+
+          req.on("error", rejInner);
+          req.setTimeout(18000, () => {
+            req.destroy(new Error(`OpenRouter timeout on ${curModel} (18s)`));
+          });
+          req.write(payload);
+          req.end();
+        });
+
+        if (reply) {
+          console.log(`✅ [OpenRouter] Model "${curModel}" berhasil merespons (${reply.length} char).`);
+          return resolve({ reply, model: curModel });
+        }
+      } catch (err) {
+        lastError = err;
+        console.warn(`⚠️ [OpenRouter Cascade] Model ${curModel} gagal: ${err.message} — mencoba model berikutnya...`);
+      }
+    }
+
+    reject(lastError || new Error("Semua kandidat model OpenRouter gagal merespons."));
+  });
+}
+
+/**
+ * Fallback: relay ke Gemini REST API langsung
+ */
+function callGeminiBackend(apiKey, model, systemPrompt, userMessage, chatHistory = [], maxTokens = 800) {
   const candidateModels = Array.from(new Set([
     model,
     "gemini-3.5-flash-lite",
@@ -1411,7 +1745,7 @@ function callGeminiBackend(apiKey, model, systemPrompt, userMessage, chatHistory
 
   return new Promise(async (resolve, reject) => {
     const contents = [];
-    const validHistory = (chatHistory || []).slice(-6); // Batasi history agar prompt ringkas
+    const validHistory = (chatHistory || []).slice(-6);
     validHistory.forEach(item => {
       if (item && item.content && item.content.trim()) {
         const role = item.role === "assistant" ? "model" : "user";
@@ -1475,7 +1809,7 @@ function callGeminiBackend(apiKey, model, systemPrompt, userMessage, chatHistory
         });
 
         if (reply) {
-          return resolve(reply);
+          return resolve({ reply, model: curModel });
         }
       } catch (err) {
         lastError = err;
@@ -1487,69 +1821,446 @@ function callGeminiBackend(apiKey, model, systemPrompt, userMessage, chatHistory
   });
 }
 
+// Helper: Mengambil riwayat pesanan member dari MySQL
+async function getMemberOrderHistory(memberName) {
+  if (!memberName || !dbPool) return [];
+  try {
+    const cleanName = memberName.trim();
+    const [rows] = await dbPool.query(`
+      SELECT p.kode_transaksi, p.total_omset, p.created_at, pd.nama_menu, pd.jumlah, pd.harga, pd.subtotal
+      FROM pesanan p
+      JOIN pesanan_detail pd ON p.id = pd.pesanan_id
+      WHERE LOWER(p.nama_pelanggan) LIKE LOWER(?)
+      ORDER BY p.id DESC
+      LIMIT 25
+    `, [`%${cleanName}%`]);
+
+    const grouped = {};
+    for (const r of rows) {
+      if (!grouped[r.kode_transaksi]) {
+        grouped[r.kode_transaksi] = {
+          kode: r.kode_transaksi,
+          total: r.total_omset,
+          date: r.created_at,
+          items: []
+        };
+      }
+      grouped[r.kode_transaksi].items.push(`${r.nama_menu} (${r.jumlah}x)`);
+    }
+
+    return Object.values(grouped).slice(0, 5).map(tx => {
+      return `${tx.kode}: ${tx.items.join(', ')} — Total: Rp ${Number(tx.total).toLocaleString('id-ID')}`;
+    });
+  } catch (err) {
+    console.error("[MemberOrderHistory Error]", err.message);
+    return [];
+  }
+}
+
+// Endpoint konteks member aktif & riwayat pesanan (Customer Chatbot)
+app.get("/api/member-context", async (req, res) => {
+  try {
+    const queryName = (req.query.name || "").trim();
+    const queryPhone = (req.query.phone || "").replace(/\D/g, "");
+
+    const members = getMembers();
+    let member = null;
+
+    if (queryPhone) {
+      member = members.find(m => {
+        const p = (m.cleanPhone || m.phone || "").replace(/\D/g, "");
+        return p === queryPhone || p.endsWith(queryPhone) || queryPhone.endsWith(p);
+      });
+    }
+
+    if (!member && queryName) {
+      member = members.find(m => (m.name || "").toLowerCase() === queryName.toLowerCase())
+        || members.find(m => (m.name || "").toLowerCase().includes(queryName.toLowerCase()));
+    }
+
+    const memberName = member ? member.name : queryName;
+    const history = memberName ? await getMemberOrderHistory(memberName) : [];
+
+    res.json({
+      success: true,
+      member: member || (queryName ? { name: queryName } : null),
+      recentOrders: history
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint status & ringkasan analitik real-time
+app.get("/api/analytics-summary", async (req, res) => {
+  try {
+    const metrics = await getTransactionMetricsFromDB();
+    const menuList = await getMenuFromDB();
+    const members = getMembers();
+
+    // Stok kritis & habis
+    const outOfStock = menuList.filter(m => Number(m.stok || 0) <= 0).map(m => m.nama_menu);
+    const lowStock = menuList.filter(m => Number(m.stok || 0) > 0 && Number(m.stok || 0) <= 3).map(m => `${m.nama_menu} (${m.stok})`);
+
+    return res.json({
+      status: "success",
+      success: true,
+      totalOrders: metrics.totalOrders,
+      totalRevenue: metrics.totalRevenue,
+      avgOrder: metrics.avgOrder,
+      topItems: metrics.topItems,
+      topItemsArr: metrics.topItemsArr || [],
+      totalMembers: members.length,
+      menuCount: menuList.length,
+      outOfStock,
+      lowStock
+    });
+  } catch (err) {
+    return res.status(500).json({ status: "error", message: err.message });
+  }
+});
+
 app.post("/api/ai-chat", async (req, res) => {
   try {
-    const { message, chatHistory = [], apiKey, model } = req.body || {};
+    const { message, chatHistory = [], apiKey, model, role = "admin" } = req.body || {};
 
     if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({ success: false, error: "Parameter 'message' wajib diisi." });
     }
 
+    const trimmedMsg = message.trim();
+    const lowerMsg = trimmedMsg.toLowerCase();
+
     // === 1. Baca members.json REAL-TIME ===
     const members = getMembers();
     const memberCount = members.length;
-    const namaMembers = members.map(m => m.name).join(', ');
+    const memberDetails = members.map((m, i) => `${i + 1}. ${m.name || "Member"} — Kampus: ${m.campus || "-"}`).join("\n");
+    const memberListFormatted = members.map((m, i) => {
+      const name = (m.name || "Member").trim();
+      const campus = (m.campus || "-").trim();
+      return `${i + 1}. **${name}** — Kampus: ${campus}`;
+    }).join("\n");
 
     // === 2. Baca data menu langsung dari MySQL REAL-TIME ===
     const menuList = await getMenuFromDB();
     const menuContext = formatMenuContext(menuList);
 
-    // === 3. Baca data transaksi ===
-    const txData = req.body.transactionSummary || null;
-    const txLine = txData
-      ? `\n- Data Transaksi: ${txData.total} transaksi, Total Pendapatan = Rp ${Number(txData.revenue || 0).toLocaleString("id-ID")}.`
-      : "";
+    // === 3. Baca data transaksi & omset real-time (MySQL + Fallback Body) ===
+    const dbMetrics = await getTransactionMetricsFromDB();
+    const reqTx = req.body.transactionSummary || null;
+    const totalOrders = (dbMetrics && dbMetrics.totalOrders > 0)
+      ? dbMetrics.totalOrders
+      : (reqTx && reqTx.total ? reqTx.total : 0);
+    const totalRevenue = (dbMetrics && dbMetrics.totalRevenue > 0)
+      ? dbMetrics.totalRevenue
+      : (reqTx && reqTx.revenue ? reqTx.revenue : 0);
+    const avgOrder = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+    const formatRp = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
 
-    // === 4. Bangun System Prompt ringkas, ramah, tuntas & faktual ===
-    const geminiKey  = apiKey  || process.env.GEMINI_API_KEY || "AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw";
-    const geminiModel = model  || "gemini-3.5-flash-lite";
+    // Ambil rincian transaksi terbaru untuk context AI Admin
+    const recentTxDetails = (role !== "customer") ? await getRecentTransactionDetails() : "";
 
-    const systemPrompt = `Kamu adalah "KopiAI Business Advisor" — asisten AI bisnis untuk Admin / Pengelola Kedai Kopi Mahasiswa.
+    // === ATURAN CEPAT / DETERMINISTIK UNTUK CUSTOMER (MEMBER) ===
+    if (role === "customer") {
+      const activeMember = req.body.member || req.body.memberData || {};
+      const memberName = activeMember.name || req.body.name || "";
+      const memberPhone = activeMember.phone || activeMember.cleanPhone || req.body.phone || "";
+      const memberCampus = activeMember.campus || "";
+      const memberPoints = activeMember.points || activeMember.totalPoints || 100;
 
-INSTRUKSI PENTING & KARAKTER JAWABAN:
-- Jawablah selalu dalam Bahasa Indonesia yang jelas, ramah, dan tuntas.
-- Berikan jawaban yang padat (maksimal 2-3 kalimat utuh) dan pastikan kalimat selesai sampai tanda titik tanpa terpotong.
-- IDENTITAS PENGGUNA: Lawan bicaramu adalah Admin / Pengelola Kedai Kopi Mahasiswa. Jika user bertanya tentang identitasnya (seperti "siapa saya", "siapa aku"), jawablah secara utuh dan jelas: "Anda adalah Admin / Pengelola Kedai Kopi Mahasiswa."
-- KONSISTENSI DATA MENU: HANYA jawab keberadaan dan informasi menu berdasarkan daftar menu resmi dari database MySQL di bawah ini. Jika user menanyakan nama menu yang TIDAK ADA di database (misalnya menu yang sudah dihapus atau tidak pernah terdaftar), Anda WAJIB menjawab bahwa menu tersebut tidak tersedia dan berikan saran nama menu yang sesuai dari database.
-- Gunakan poin-poin singkat jika jawaban berupa daftar (maksimal 5 poin).
+      // Ambil riwayat pesanan member dari MySQL
+      let recentOrders = [];
+      if (memberName) {
+        recentOrders = await getMemberOrderHistory(memberName);
+      }
 
-${menuContext}
+      // Fast response: siapa saya / siapa gw / siapa aku / nama saya
+      if (/\b(siapa\s*(gw|gue|aku|saya)|nama\s*(saya|aku|gue|gw)\s*(siapa|apa)|(gw|gue|aku|saya)\s*siapa)\b/i.test(lowerMsg)) {
+        if (memberName) {
+          return res.json({
+            success: true,
+            reply: `Lu adalah **${memberName}**! 🎓 Member setia Kopi Mahasiswa${memberCampus ? ' dari ' + memberCampus : ''}. Seneng banget bisa nemenin lu nongkrong dan nugas, Bestie! ☕✨`
+          });
+        }
+      }
 
-DATA MEMBER TERDAFTAR (REAL-TIME members.json):
-- Total Member Terdaftar = ${memberCount} member${txLine}
-- Daftar Member: ${namaMembers}
-- Manfaat Member: Diskon 10% setiap transaksi.
+      // Fast response: poin
+      if (/\b(poin|point|reward)\b/i.test(lowerMsg) && /\b(berapa|cek|lihat|total|saya|aku|gw|gue)\b/i.test(lowerMsg)) {
+        return res.json({
+          success: true,
+          reply: `Hai **${memberName || 'Bestie'}**! Poin reward kamu saat ini adalah **${memberPoints} Poin** (Status: Member Aktif Diskon 10% di setiap transaksi) ☕🎉`
+        });
+      }
 
-Fokus pada: analisis penjualan, stok, strategi promo, data member, data menu, dan operasional kafe.`;
-
-    console.log(`🤖 [API AI Chat] Pesan: "${message.slice(0, 60)}..." | Menu: ${menuList.length} items | Members: ${memberCount} | Model: ${geminiModel}`);
-
-    // === 5. Relay ke Gemini (maxOutputTokens: 300) ===
-    const reply = await callGeminiBackend(
-      geminiKey,
-      geminiModel,
-      systemPrompt,
-      message.trim(),
-      chatHistory,
-      300 // maxOutputTokens: 300
-    );
-
-    if (!reply) {
-      return res.status(502).json({ success: false, error: "Gemini tidak memberikan respons. Coba lagi." });
+      // Fast response: riwayat pesanan
+      if ((/\b(kemarin|riwayat|sebelumnya|terakhir)\b/i.test(lowerMsg) && /\b(pesan|order|beli|pesanan)\b/i.test(lowerMsg)) || /\b(pesan|beli)\s+apa\b/i.test(lowerMsg)) {
+        if (recentOrders && recentOrders.length > 0) {
+          return res.json({
+            success: true,
+            reply: `Ini riwayat pesanan terakhir lu, Bestie **${memberName}**! ☕\n\n${recentOrders.map(o => `• ${o}`).join('\n')}\n\nMau repeat order yang mana nih biar nugas makin gas? 🔥`
+          });
+        } else if (memberName) {
+          return res.json({
+            success: true,
+            reply: `Halo Bestie **${memberName}**, belum ada catatan pesanan atas nama lu nih. Yuk langsung pilih menu favorit lu di atas buat pesanan pertama! ☕✨`
+          });
+        }
+      }
     }
 
-    console.log(`✅ [API AI Chat] Balasan Gemini (${reply.length} char) terkirim.`);
-    return res.json({ success: true, reply, memberCount, menuCount: menuList.length });
+    // === ATURAN CEPAT / DETERMINISTIK UNTUK ADMIN & OWNER ===
+    const activeRole = req.body.userRole || (role === "owner" ? "Owner" : "Admin");
+    const activeUserName = req.body.userName || (activeRole === "Owner" ? "Owner Kopi Mahasiswa" : "Fathialaziz (Admin)");
+    const activePeriod = req.body.activePeriod || "Semua Waktu";
+    const recapData = req.body.recap || {};
+
+    if (role !== "customer") {
+      // 1. Role Aktif & Identitas Admin/Owner (Siapa saya / apa role saya)
+      if ((/\b(role|peran|level|hak\s*akses)\b/i.test(lowerMsg) && /\b(saya|aku|login|aktif|saat\s*ini|sekarang|apa|siapa|cek|status)\b/i.test(lowerMsg)) ||
+        /\b(siapa\s+(saya|aku|admin|owner)|identitas\s+(saya|aku|admin|owner)|(saya|aku)\s+siapa|status\s+login)\b/i.test(lowerMsg)) {
+        console.log(`🤖 [API AI Chat] Deteksi pertanyaan role aktif -> "${activeRole} (${activeUserName})"`);
+        return res.json({
+          success: true,
+          reply: `Role aktif yang sedang login saat ini adalah **${activeRole}** (${activeUserName}).\n\nHak akses: ${activeRole === 'Owner' ? 'Akses laporan eksekutif, analitik finansial, omset, dan evaluasi performa bisnis.' : 'Akses panel operasional harian kasir/POS, pengelolaan menu, kontrol stok, dan monitoring member.'}`,
+          memberCount,
+          metrics: { totalOrders, totalRevenue, avgOrder }
+        });
+      }
+
+      // 2. Total Transaksi & Omset Periode Aktif
+      if (/\b(total|jumlah|berapa|rekap)\s*(transaksi|pesanan|order)\b/i.test(lowerMsg) ||
+        /\b(total|berapa)\s*(omset|pendapatan|penjualan|revenue)\b/i.test(lowerMsg) ||
+        /\b(transaksi|penjualan|omset)\s*(periode|saat\s*ini|hari\s*ini|semua|aktif)\b/i.test(lowerMsg) ||
+        /^(total\s*transaksi|total\s*omset|laporan\s*penjualan|ringkasan\s*penjualan)$/i.test(lowerMsg.trim())) {
+        console.log(`🤖 [API AI Chat] Deteksi pertanyaan total transaksi & omset -> Periode ${activePeriod}`);
+        return res.json({
+          success: true,
+          reply: `Berikut rekapitulasi data transaksi untuk **Periode ${activePeriod}**:\n\n• Total Transaksi: **${totalOrders} pesanan**\n• Total Omset / Pendapatan: **${formatRp(totalRevenue)}**\n• Rata-rata Nilai Pesanan (AOV): **${formatRp(avgOrder)}**\n\nSeluruh data transaksi tercatat akurat dan tersinkronisasi di sistem Kopi Mahasiswa.`,
+          memberCount,
+          metrics: { totalOrders, totalRevenue, avgOrder }
+        });
+      }
+
+      // 3. Siapa Saja Nama Pembeli & Rincian Pesanannya
+      if ((/\b(pembeli|pemesan|pelanggan|konsumen|customer|nama\s*pemesan|nama\s*pembeli|yang\s*pesan|yang\s*beli)\b/i.test(lowerMsg) &&
+        /\b(siapa|daftar|list|nama|pesanan|pesanannya|item|order|rincian|semua|detail|siapa\s*aja|siapa\s*saja|apa\s*saja|apa\s*aja)\b/i.test(lowerMsg)) ||
+        /\b(siapa\s*(saja|aja)\s*yang\s*(pesan|beli|order))\b/i.test(lowerMsg) ||
+        /^(daftar\s*pembeli|daftar\s*pemesan|data\s*pembeli|siapa\s*yang\s*pesan)$/i.test(lowerMsg.trim())) {
+        console.log(`🤖 [API AI Chat] Deteksi pertanyaan rincian pembeli & pesanan`);
+        const buyersText = recapData.buyersListText || recentTxDetails || "Belum ada rincian transaksi tersedia.";
+        return res.json({
+          success: true,
+          reply: `Berikut daftar seluruh pembeli dan rincian pesanannya (**Periode ${activePeriod}** — Total **${totalOrders} pesanan**):\n\n${buyersText}`,
+          memberCount,
+          metrics: { totalOrders, totalRevenue, avgOrder }
+        });
+      }
+
+      // 4. Rekap Menu Terlaris
+      if ((/\b(menu|produk|makanan|minuman)\b/i.test(lowerMsg) && /\b(terlaris|paling\s*laris|paling\s*laku|favorit|top|bestseller|best\s*seller|unggulan|paling\s*banyak)\b/i.test(lowerMsg)) ||
+        /\b(terlaris|paling\s*laris|best\s*seller|bestseller)\b/i.test(lowerMsg) ||
+        /^(menu\s*terlaris|produk\s*terlaris|top\s*seller|bestseller)$/i.test(lowerMsg.trim())) {
+        console.log(`🤖 [API AI Chat] Deteksi pertanyaan menu terlaris`);
+        const topText = recapData.topSellingMenuText || (dbMetrics.topItemsArr && dbMetrics.topItemsArr.length > 0
+          ? dbMetrics.topItemsArr.slice(0, 5).map((r, i) => `${i + 1}. **${r.nama}**: ${r.terjual} porsi terjual (Rp ${Number(r.pendapatan || 0).toLocaleString("id-ID")})`).join("\n")
+          : "Data menu terlaris belum tersedia.");
+        return res.json({
+          success: true,
+          reply: `Berikut rekapitulasi **Menu Terlaris** berdasarkan kuantitas pesanan (**Periode ${activePeriod}**):\n\n${topText}`,
+          memberCount,
+          metrics: { totalOrders, totalRevenue, avgOrder }
+        });
+      }
+
+      // 5. Daftar Member Terdaftar
+      const isMemberQuery = (
+        /\b(member|anggota)\b/i.test(lowerMsg) &&
+        (/(siapa|daftar|list|data|nama|semua|seluruh|cek|tampilkan|berapa|total|info|lihat|sebutkan|detail|lengkap|siapa\s*aja|siapa\s*saja|ada\s*siapa)/i.test(lowerMsg) ||
+          /^(member|members|data\s*member|daftar\s*member)$/i.test(lowerMsg.trim()))
+      );
+
+      if (isMemberQuery) {
+        console.log(`🤖 [API AI Chat] Deteksi pertanyaan data member -> Mengirim SELURUH ${memberCount} member lengkap`);
+        if (memberCount === 0) {
+          return res.json({
+            success: true,
+            reply: "Saat ini belum ada member yang terdaftar dalam sistem.",
+            memberCount: 0,
+            metrics: { totalOrders, totalRevenue, avgOrder }
+          });
+        }
+        return res.json({
+          success: true,
+          reply: `Total terdaftar: **${memberCount} member**\n\n${memberListFormatted}`,
+          memberCount,
+          metrics: { totalOrders, totalRevenue, avgOrder }
+        });
+      }
+    }
+
+    // === 4. Bangun System Prompt (Sesuai Role: Admin Serius atau Customer Gen Z) ===
+    const activeModel = model || OPENROUTER_DEFAULT_MODEL;
+    let systemPrompt = "";
+
+    if (role === "customer") {
+      const activeMember = req.body.member || req.body.memberData || {};
+      const memberName = activeMember.name || req.body.name || "";
+      const memberPhone = activeMember.phone || activeMember.cleanPhone || req.body.phone || "";
+      const memberCampus = activeMember.campus || "";
+      const memberPoints = activeMember.points || activeMember.totalPoints || 100;
+
+      let recentOrders = [];
+      if (memberName) {
+        recentOrders = await getMemberOrderHistory(memberName);
+      }
+
+      const memberOrderHistoryText = (recentOrders && recentOrders.length > 0)
+        ? recentOrders.map(o => `- ${o}`).join("\n")
+        : "Belum ada catatan pesanan sebelumnya.";
+
+      const memberInstruction = memberName
+        ? `Saat ini kamu sedang berbicara dengan member bernama ${memberName} (No. WA: ${memberPhone || "-"}, Kampus: ${memberCampus || "-"}, Poin: ${memberPoints} Poin, Riwayat Pesanan Terakhir:\n${memberOrderHistoryText}). Panggil dia dengan namanya secara ramah dan akrab.`
+        : `Saat ini kamu sedang berbicara dengan pelanggan. Panggil dengan sebutan "Bestie".`;
+
+      // Prompt Customer (Gen Z)
+      systemPrompt = `Kamu adalah "KopiAI Customer Service", asisten virtual dan barista gaul resmi kedai Kopi Mahasiswa.
+Gaya bicaramu asik, santai, super ramah, dan gaul khas Gen Z (gunakan sapaan "lu-gue", "Bestie", "chill", "spill", "gaskeun").
+JANGAN gunakan bahasa kaku/formal seperti "Anda". Jawab dengan 2-4 kalimat tuntas tanpa kepotong.
+
+${memberInstruction}
+
+${menuContext}
+Fasilitas: WiFi kenceng, colokan tiap meja, buka 08.00-23.00 WIB di Jl. Kampus Merdeka No. 45.`;
+    } else {
+      // Prompt Admin (Serius, To The Point, Profesional) + Full Data Context
+      const richMenuCtx = formatMenuContextRich(menuList);
+      const topItemsCtx = dbMetrics.topItemsArr && dbMetrics.topItemsArr.length > 0
+        ? dbMetrics.topItemsArr.slice(0, 5).map((r, i) => {
+          const pendStr = r.pendapatan > 0 ? ` (Rp ${r.pendapatan.toLocaleString("id-ID")})` : "";
+          return `  ${i + 1}. ${r.nama}: ${r.terjual} porsi${pendStr}`;
+        }).join("\n")
+        : "  Data top-selling belum tersedia.";
+
+      const stockSummary = (() => {
+        const habis = menuList.filter(m => Number(m.stok || 0) <= 0);
+        const kritis = menuList.filter(m => Number(m.stok || 0) > 0 && Number(m.stok || 0) <= 3);
+        let s = `  Total: ${menuList.length} produk`;
+        if (habis.length > 0) s += `\n  HABIS: ${habis.map(m => m.nama_menu).join(", ")}`;
+        if (kritis.length > 0) s += `\n  KRITIS: ${kritis.map(m => `${m.nama_menu} (${m.stok})`).join(", ")}`;
+        if (habis.length === 0 && kritis.length === 0) s += "\n  Semua produk stok aman.";
+        return s;
+      })();
+
+      systemPrompt = `Kamu adalah "KopiAI Admin" — asisten AI internal khusus Admin & Owner Kedai Kopi Mahasiswa.
+
+ATURAN KOMUNIKASI & KARAKTER JAWABAN (WAJIB DIPATUHI):
+- Gaya bahasa: Serius, to the point, profesional, singkat, padat, dan lugas.
+- DILARANG menggunakan gaya bahasa gaul, santai, atau istilah Gen Z. Gunakan bahasa Indonesia formal dan lugas.
+- IDENTITAS & ROLE PENGGUNA: Lawan bicara Anda memiliki Role aktif: **${activeRole}** (Akun: ${activeUserName}).
+  * Jika user bertanya mengenai role atau status loginnya, jawab secara tegas bahwa role-nya adalah **${activeRole}**.
+- DATA MEMBER: Sebutkan SELURUH ${memberCount} member secara lengkap tanpa memotong data.
+- DATA OMSET: Total omset aktif ${formatRp(totalRevenue)} dari ${totalOrders} transaksi (Periode: ${activePeriod}). BUKAN Rp 0.
+- Jawaban harus selesai tuntas tanpa kalimat terpotong.
+
+=== STRUKTUR PERAN SISTEM (ROLES) ===
+Sistem Kopi Mahasiswa memiliki 3 tingkat peran (Role) utama:
+1. Member (Pelanggan/Mahasiswa): Akses ke katalog menu, diskon khusus member 10%, pengumpulan poin, riwayat pesanan pribadi, dan bantuan KopiAI Live.
+2. Admin: Akses ke panel operasional harian, manajemen produk, stok, dan pencatatan transaksi.
+3. Owner (Pemilik Usaha): Akses penuh untuk memantau laporan keuangan, analisis performa bisnis, dan pengaturan tingkat tinggi.
+Jika Admin atau Owner bertanya mengenai jumlah role, hak akses, atau perbedaannya, jelaskan dengan profesional berdasarkan data di atas.
+
+${richMenuCtx}
+
+=== DATA TRANSAKSI & PENJUALAN (${activePeriod}) ===
+- Total Omset: ${formatRp(totalRevenue)}
+- Total Pesanan: ${totalOrders} transaksi
+- Rata-rata Pesanan (AOV): ${formatRp(avgOrder)}
+
+=== REKAP MENU TERLARIS (${activePeriod}) ===
+${recapData.topSellingMenuText || topItemsCtx}
+
+=== STATUS STOK ===
+${stockSummary}
+
+=== DATA SELURUH MEMBER (members.json — ${memberCount} ORANG) ===
+${memberDetails || "Belum ada member terdaftar."}
+- Benefit member: Diskon 10% per transaksi.
+
+=== RINCIAN SELURUH TRANSAKSI & PEMBELI (${activePeriod}) ===
+${recapData.buyersListText || recentTxDetails}
+
+Fokus: Operasional kedai, data stok, laporan penjualan, dan manajemen member.`;
+    }
+
+    console.log(`🤖 [API AI Chat] Pesan: "${trimmedMsg.slice(0, 60)}..." | Role: ${role} | Model: ${activeModel}`);
+
+    // === 5. Panggil Provider AI yang dipilih (OpenRouter / Gemini) ===
+    let result = null;
+    const chosenProvider = (req.body.provider || "").toLowerCase();
+
+    if (chosenProvider === "gemini" || (model && model.startsWith("gemini:"))) {
+      const cleanModel = (model || "").replace(/^gemini:/, "") || "gemini-3.5-flash-lite";
+      const geminiKey = (apiKey && !apiKey.startsWith("sk-or-")) ? apiKey : (process.env.GEMINI_API_KEY || "AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw");
+      console.log(`🔷 [API AI Chat] Routing ke Google Gemini Direct API [${cleanModel}]`);
+      try {
+        result = await callGeminiBackend(
+          geminiKey,
+          cleanModel,
+          systemPrompt,
+          trimmedMsg,
+          chatHistory,
+          800
+        );
+      } catch (gemErr) {
+        console.warn("⚠️ [API AI Chat] Gemini direct gagal, mencoba OpenRouter fallback:", gemErr.message);
+        result = await callOpenRouterBackend(
+          null,
+          "google/gemini-2.5-flash",
+          systemPrompt,
+          trimmedMsg,
+          chatHistory,
+          800
+        );
+      }
+    } else {
+      // Default: OpenRouter Universal Multi-Model
+      console.log(`🌐 [API AI Chat] Routing ke OpenRouter Multi-Model API [${activeModel}]`);
+      try {
+        result = await callOpenRouterBackend(
+          apiKey,
+          activeModel,
+          systemPrompt,
+          trimmedMsg,
+          chatHistory,
+          800
+        );
+      } catch (orErr) {
+        console.warn("⚠️ [API AI Chat] OpenRouter gagal, mencoba Gemini direct fallback:", orErr.message);
+        const geminiKey = process.env.GEMINI_API_KEY || "AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw";
+        result = await callGeminiBackend(
+          geminiKey,
+          "gemini-3.5-flash-lite",
+          systemPrompt,
+          trimmedMsg,
+          chatHistory,
+          800
+        );
+      }
+    }
+
+    if (!result || !result.reply) {
+      return res.status(502).json({ success: false, error: "AI tidak memberikan respons. Coba lagi." });
+    }
+
+    console.log(`✅ [API AI Chat] Balasan (${result.reply.length} char) terkirim via [${result.model}].`);
+    return res.json({
+      success: true,
+      reply: result.reply,
+      modelUsed: result.model,
+      memberCount,
+      menuCount: menuList.length,
+      metrics: { totalOrders, totalRevenue, avgOrder }
+    });
 
   } catch (err) {
     console.error("❌ [API AI Chat Error]:", err.message || err);

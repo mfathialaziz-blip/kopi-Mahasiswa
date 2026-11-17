@@ -173,6 +173,57 @@
   color: #63b3ed;
 }
 
+/* Model Selector Bar */
+.admin-ai-model-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: #0f172a;
+  border-bottom: 1px solid rgba(99, 179, 237, 0.15);
+  gap: 8px;
+}
+
+.admin-ai-model-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.model-tag-icon {
+  color: #fbbf24;
+  font-size: 0.85rem;
+}
+
+.admin-ai-model-select {
+  flex: 1;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(99, 179, 237, 0.3);
+  color: #38bdf8;
+  font-size: 0.73rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.admin-ai-model-select:hover,
+.admin-ai-model-select:focus {
+  border-color: #38bdf8;
+  background: rgba(30, 41, 59, 1);
+}
+
+.admin-ai-model-select option {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
 /* Quick Chips */
 .admin-ai-chips {
   display: flex;
@@ -305,6 +356,22 @@
   border-bottom: 1px solid rgba(99, 179, 237, 0.2);
 }
 
+.admin-ai-msg-row.system {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0;
+}
+
+.admin-ai-system-notice {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 4px 12px;
+  border-radius: 14px;
+  text-align: center;
+}
+
 /* Typing Indicator */
 .admin-ai-typing {
   display: flex;
@@ -383,6 +450,122 @@
 .admin-ai-send-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(66, 153, 225, 0.5);
+}
+
+/* Admin AI Settings Modal (Pengaturan Engine AI) */
+.admin-ai-settings-modal {
+  display: none;
+  background: #111827;
+  border-bottom: 2px solid rgba(99, 179, 237, 0.35);
+  padding: 16px;
+  animation: adminAiFadeIn 0.2s ease forwards;
+  color: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.admin-ai-settings-modal.active {
+  display: block;
+}
+
+@keyframes adminAiFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.admin-ai-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.admin-ai-settings-title {
+  font-family: var(--font-comic, 'Poppins', sans-serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #63b3ed;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-ai-settings-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.admin-ai-settings-label:hover {
+  background: rgba(99, 179, 237, 0.1);
+}
+
+.admin-ai-key-group {
+  margin-top: 8px;
+}
+
+.admin-ai-key-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #90cdf4;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.admin-ai-key-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #1e293b;
+  border: 1px solid rgba(99, 179, 237, 0.3);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  color: #f8fafc;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.admin-ai-key-input:focus {
+  border-color: #63b3ed;
+}
+
+.admin-ai-key-hint {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  display: block;
+  margin-top: 3px;
+}
+
+.admin-ai-save-settings-btn {
+  width: 100%;
+  padding: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-top: 10px;
+  background: linear-gradient(135deg, #3182ce, #2b6cb0);
+  border: 1px solid rgba(99, 179, 237, 0.4);
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.admin-ai-save-settings-btn:hover {
+  background: linear-gradient(135deg, #4299e1, #3182ce);
+  transform: translateY(-1px);
+}
+
+.admin-ai-model-select optgroup {
+  background: #0f172a;
+  color: #94a3b8;
+  font-weight: 700;
+  font-style: normal;
 }
 
 /* Responsive */
