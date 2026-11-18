@@ -11,7 +11,7 @@
 
   <!-- Strict Route Protection: Member Only -->
   <script>
-    (function() {
+    (function () {
       function getCookie(name) {
         const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
         return v ? decodeURIComponent(v[2]) : null;
@@ -40,7 +40,7 @@
         if (roleCookie && !localStorage.getItem('km_auth_role')) {
           localStorage.setItem('km_auth_role', roleCookie);
         }
-      } catch(e) {}
+      } catch (e) { }
     })();
   </script>
 
@@ -85,6 +85,7 @@
       z-index: 1002;
       pointer-events: auto !important;
     }
+
     .btn-navbar-logout:hover {
       background: #DC2626 !important;
       color: #FFFFFF !important;
@@ -92,6 +93,7 @@
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
     }
+
     .btn-navbar-logout:active {
       transform: translateY(0);
     }
@@ -168,7 +170,8 @@
 
         <!-- Tombol Keluar (Logout) Terang, Kontras & Lega -->
         <div class="member-header-wrap" style="display: flex; align-items: center; margin-left: 6px;">
-          <button type="button" class="btn-navbar-logout" id="btnNavbarLogout" aria-label="Keluar dari Akun" title="Keluar dari Akun Member">
+          <button type="button" class="btn-navbar-logout" id="btnNavbarLogout" aria-label="Keluar dari Akun"
+            title="Keluar dari Akun Member">
             <span style="font-size: 15px;">🚪</span>
             <span>Keluar</span>
           </button>
@@ -1672,7 +1675,7 @@
      * Persona: Santai, gaul, interaktif khas Gen Z ("lu-gue", "Bestie", "chill", "spill").
      */
     window.OPENROUTER_BARISTA_CONFIG = {
-      apiKey: "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",
+      apiKey: "...",
       model: "google/gemini-2.5-flash",
       role: "customer_service"
     };
@@ -1687,18 +1690,24 @@
   <!-- ===================================================
        MODAL KONFIRMASI LOGOUT
        =================================================== -->
-  <div class="modal-backdrop" id="logoutConfirmModal" style="display: none; visibility: hidden; opacity: 0; pointer-events: none; align-items: center; justify-content: center; z-index: 99999; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); position: fixed; inset: 0; transition: opacity 0.2s ease, visibility 0.2s ease;">
-    <div class="modal-card" style="max-width: 380px; width: 90%; padding: 32px 24px; text-align: center; border-radius: 20px; background: #FFFFFF; border: 1.5px solid #E5E7EB; box-shadow: 0 20px 50px rgba(0,0,0,0.3); animation: popModal 0.2s ease-out;">
-      <div style="width: 58px; height: 58px; background: #FEE2E2; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px; color: #DC2626; border: 2px solid #FECACA;">
+  <div class="modal-backdrop" id="logoutConfirmModal"
+    style="display: none; visibility: hidden; opacity: 0; pointer-events: none; align-items: center; justify-content: center; z-index: 99999; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); position: fixed; inset: 0; transition: opacity 0.2s ease, visibility 0.2s ease;">
+    <div class="modal-card"
+      style="max-width: 380px; width: 90%; padding: 32px 24px; text-align: center; border-radius: 20px; background: #FFFFFF; border: 1.5px solid #E5E7EB; box-shadow: 0 20px 50px rgba(0,0,0,0.3); animation: popModal 0.2s ease-out;">
+      <div
+        style="width: 58px; height: 58px; background: #FEE2E2; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px; color: #DC2626; border: 2px solid #FECACA;">
         🚪
       </div>
       <h3 style="font-size: 1.25rem; font-weight: 800; color: #1C1917; margin-bottom: 8px;">Konfirmasi Keluar</h3>
-      <p style="font-size: 0.92rem; color: #4B5563; margin-bottom: 24px; line-height: 1.5;">Anda yakin ingin keluar dari akun?</p>
+      <p style="font-size: 0.92rem; color: #4B5563; margin-bottom: 24px; line-height: 1.5;">Anda yakin ingin keluar dari
+        akun?</p>
       <div style="display: flex; gap: 12px; justify-content: center;">
-        <button type="button" id="cancelLogoutBtn" style="flex: 1; padding: 12px 18px; border-radius: 12px; border: 1.5px solid #D1D5DB; background: #F3F4F6; color: #374151; font-weight: 700; font-size: 0.92rem; cursor: pointer; transition: all 0.2s;">
+        <button type="button" id="cancelLogoutBtn"
+          style="flex: 1; padding: 12px 18px; border-radius: 12px; border: 1.5px solid #D1D5DB; background: #F3F4F6; color: #374151; font-weight: 700; font-size: 0.92rem; cursor: pointer; transition: all 0.2s;">
           Batal
         </button>
-        <button type="button" id="confirmLogoutBtn" style="flex: 1; padding: 12px 18px; border-radius: 12px; border: none; background: #DC2626; color: #FFFFFF; font-weight: 800; font-size: 0.92rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 14px rgba(220,38,38,0.3);">
+        <button type="button" id="confirmLogoutBtn"
+          style="flex: 1; padding: 12px 18px; border-radius: 12px; border: none; background: #DC2626; color: #FFFFFF; font-weight: 800; font-size: 0.92rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 14px rgba(220,38,38,0.3);">
           Ya, Keluar
         </button>
       </div>
@@ -1707,7 +1716,7 @@
 
   <script>
     // Script Modal Konfirmasi Logout
-    (function() {
+    (function () {
       const btnNavbarLogout = document.getElementById('btnNavbarLogout');
       const drawerMemberLogoutBtn = document.getElementById('drawerMemberLogoutBtn');
       const logoutConfirmModal = document.getElementById('logoutConfirmModal');

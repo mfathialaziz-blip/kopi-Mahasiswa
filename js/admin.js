@@ -883,15 +883,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       try {
         // Baca semua field dengan null-safe
-        const id          = (prodIdInput       ? prodIdInput.value.trim()       : "");
-        const name        = (prodNameInput      ? prodNameInput.value.trim()      : "");
-        const category    = (prodCategorySelect ? prodCategorySelect.value        : "kopi");
-        const price       = Number(prodPriceInput  ? prodPriceInput.value  : 0);
-        const stock       = Number(prodStockInput  ? prodStockInput.value  : 0);
-        const badge       = (prodBadgeInput    ? prodBadgeInput.value.trim()    : "");
-        const description = (prodDescInput     ? prodDescInput.value.trim()     : "");
-        const active      = prodActiveToggle   ? prodActiveToggle.checked        : true;
-        const tags        = prodTagsInput
+        const id = (prodIdInput ? prodIdInput.value.trim() : "");
+        const name = (prodNameInput ? prodNameInput.value.trim() : "");
+        const category = (prodCategorySelect ? prodCategorySelect.value : "kopi");
+        const price = Number(prodPriceInput ? prodPriceInput.value : 0);
+        const stock = Number(prodStockInput ? prodStockInput.value : 0);
+        const badge = (prodBadgeInput ? prodBadgeInput.value.trim() : "");
+        const description = (prodDescInput ? prodDescInput.value.trim() : "");
+        const active = prodActiveToggle ? prodActiveToggle.checked : true;
+        const tags = prodTagsInput
           ? prodTagsInput.value.split(",").map(t => t.trim()).filter(Boolean)
           : [];
 
@@ -942,14 +942,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Sinkronisasi ke MySQL via update_menu.php (background, non-blocking)
         const mysqlPayload = {
-          action:    id ? "update_menu" : "add_menu",
+          action: id ? "update_menu" : "add_menu",
           nama_lama: originalName,
           nama_menu: name,
-          kategori:  category,
-          harga:     price,
-          stok:      stock,
+          kategori: category,
+          harga: price,
+          stok: stock,
           deskripsi: description,
-          gambar:    image
+          gambar: image
         };
         fetch("update_menu.php", {
           method: "POST",
@@ -1081,7 +1081,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Ambil juga data dari StorageManager untuk fallback / sinkronisasi gabungan
     const localList = StorageManager.getMembersList ? StorageManager.getMembersList() : [];
-    
+
     // Gabungkan list tanpa duplikasi nomor telepon
     const phoneMap = new Map();
     list.forEach(m => {
@@ -1100,8 +1100,8 @@ document.addEventListener("DOMContentLoaded", () => {
     cachedMembers = merged;
 
     if (membersSyncStatus) {
-      membersSyncStatus.textContent = apiSuccess 
-        ? "✅ Terhubung (members.json)" 
+      membersSyncStatus.textContent = apiSuccess
+        ? "✅ Terhubung (members.json)"
         : "📂 Mode Offline (Local Cache)";
       membersSyncStatus.style.color = apiSuccess ? "#34D399" : "#FBBF24";
     }
@@ -1138,8 +1138,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Update Stat Cards
     if (totalMembersCount) totalMembersCount.textContent = cachedMembers.length;
     if (latestMemberName) {
-      latestMemberName.textContent = cachedMembers.length > 0 
-        ? cachedMembers[0].name || "-" 
+      latestMemberName.textContent = cachedMembers.length > 0
+        ? cachedMembers[0].name || "-"
         : "-";
     }
 
@@ -1155,7 +1155,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     memberTableBody.innerHTML = filtered.map((m, idx) => {
-      const dateStr = m.registeredAt 
+      const dateStr = m.registeredAt
         ? new Date(m.registeredAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
         : "-";
 
@@ -1286,7 +1286,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (aiOrModel) aiOrModel.value = savedOrModel;
 
     // Set API keys (masked)
-    if (aiOrKey) aiOrKey.value = savedConfig.openRouterApiKey || "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";
+    if (aiOrKey) aiOrKey.value = savedConfig.openRouterApiKey || "..";
     if (aiGeminiKey) aiGeminiKey.value = savedConfig.geminiApiKey || "";
 
     // Show/hide model section
@@ -1376,7 +1376,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===================================================
   // 8. EXPOSE ADMIN CONTEXT UNTUK KOPIAI ADMIN CHAT
   // ===================================================
-  window.getAdminDashboardContext = function() {
+  window.getAdminDashboardContext = function () {
     let cookieRole = null;
     const match = document.cookie.match('(^|;) ?km_auth_role=([^;]*)(;|$)');
     if (match) cookieRole = decodeURIComponent(match[2]).toLowerCase().trim();

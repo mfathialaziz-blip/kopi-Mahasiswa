@@ -32,8 +32,8 @@ document.addEventListener("DOMContentLoaded", () => {
       d.setHours(h, m, 0, 0);
       return {
         iso: d.toISOString(),
-        formatted: `${d.getDate()} ${["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][d.getMonth()]} ${d.getFullYear()}, ${pad(h)}:${pad(m)} WIB`,
-        dateKey: `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`
+        formatted: `${d.getDate()} ${["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][d.getMonth()]} ${d.getFullYear()}, ${pad(h)}:${pad(m)} WIB`,
+        dateKey: `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
       };
     };
 
@@ -301,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
               id="adminOpenRouterApiKeyInput"
               class="admin-ai-key-input"
               placeholder="Masukkan OpenRouter API Key..."
-              value="${AIEngine.config.openRouterApiKey || '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'}"
+              value="${AIEngine.config.openRouterApiKey || '..'}"
             >
             <span class="admin-ai-key-hint">*Default terisi key OpenRouter Kopi Mahasiswa.</span>
           </div>
@@ -686,10 +686,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const topSellingFormatted = topSellingList.length > 0
       ? topSellingList.map((item, idx) => {
-          const revStr = item.revenue > 0 ? ` (Rp ${item.revenue.toLocaleString("id-ID")})` : "";
-          const badge = idx === 0 ? "🥇 " : (idx === 1 ? "🥈 " : (idx === 2 ? "🥉 " : `${idx + 1}. `));
-          return `${badge}**${item.name}**: ${item.quantity} porsi terjual${revStr}`;
-        }).join("\n")
+        const revStr = item.revenue > 0 ? ` (Rp ${item.revenue.toLocaleString("id-ID")})` : "";
+        const badge = idx === 0 ? "🥇 " : (idx === 1 ? "🥈 " : (idx === 2 ? "🥉 " : `${idx + 1}. `));
+        return `${badge}**${item.name}**: ${item.quantity} porsi terjual${revStr}`;
+      }).join("\n")
       : "Data penjualan belum tersedia untuk periode ini.";
 
     // 6. Daftar Nama Pembeli & Rincian Pesanan per Transaksi
@@ -761,7 +761,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return data;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // Fallback: local StorageManager
     if (typeof StorageManager !== "undefined" && StorageManager.getMembersList) {
@@ -809,7 +809,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return cachedMetricsForAI;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return cachedMetricsForAI;
   }
@@ -1011,7 +1011,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const isMemberQuery = (
         /\b(member|anggota)\b/i.test(lowerMsg) &&
         (/(siapa|daftar|list|data|nama|semua|seluruh|cek|tampilkan|berapa|total|info|lihat|sebutkan|detail|lengkap|siapa\s*aja|siapa\s*saja|ada\s*siapa)/i.test(lowerMsg) ||
-         /^(member|members|data\s*member|daftar\s*member)$/i.test(lowerMsg.trim()))
+          /^(member|members|data\s*member|daftar\s*member)$/i.test(lowerMsg.trim()))
       );
 
       if (isMemberQuery) {

@@ -2200,7 +2200,7 @@ Fokus: Operasional kedai, data stok, laporan penjualan, dan manajemen member.`;
 
     if (chosenProvider === "gemini" || (model && model.startsWith("gemini:"))) {
       const cleanModel = (model || "").replace(/^gemini:/, "") || "gemini-3.5-flash-lite";
-      const geminiKey = (apiKey && !apiKey.startsWith("sk-or-")) ? apiKey : (process.env.GEMINI_API_KEY || "AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw");
+      const geminiKey = (apiKey && !apiKey.startsWith("...")) ? apiKey : (process.env.GEMINI_API_KEY || "..");
       console.log(`🔷 [API AI Chat] Routing ke Google Gemini Direct API [${cleanModel}]`);
       try {
         result = await callGeminiBackend(

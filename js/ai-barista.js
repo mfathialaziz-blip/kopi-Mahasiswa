@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <!-- Input 2: OpenRouter API Key -->
           <div id="openRouterKeyGroup" style="display: block; margin-top: 6px;">
             <label style="font-size: 0.75rem; font-weight: 700; color: var(--coffee-800); display: block; margin-bottom: 4px;">OpenRouter API Key:</label>
-            <input type="password" id="openRouterApiKeyInput" class="form-input" style="font-size: 0.8rem; padding: 6px 10px; width: 100%; box-sizing: border-box;" placeholder="Masukkan OpenRouter API Key..." value="${AIEngine.config.openRouterApiKey || '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'}">
+            <input type="password" id="openRouterApiKeyInput" class="form-input" style="font-size: 0.8rem; padding: 6px 10px; width: 100%; box-sizing: border-box;" placeholder="Masukkan OpenRouter API Key..." value="${AIEngine.config.openRouterApiKey || '..'}">
             <span style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-top: 2px;">
               *Default terisi key OpenRouter Kopi Mahasiswa.
             </span>
@@ -190,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (geminiApiKeyInput) geminiApiKeyInput.value = AIEngine.config.geminiApiKey || "AQ.Ab8RN6IzlWQYQYgs1Nn6fJiroApOilTNf1wgSCSwzLbdr7upmw";
-  if (openRouterApiKeyInput) openRouterApiKeyInput.value = AIEngine.config.openRouterApiKey || "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";
+  if (openRouterApiKeyInput) openRouterApiKeyInput.value = AIEngine.config.openRouterApiKey || "-or-v1-18f9a1d0bba27fb3d55f0ac9e3e13d481dac8a79158c37a99a412a1e9b0def20";
 
   // Settings Open/Close
   aiSettingsToggleBtn.addEventListener("click", () => {
@@ -352,27 +352,27 @@ document.addEventListener("DOMContentLoaded", () => {
       recsHTML = `
         <div class="ai-product-suggestions">
           ${recommendations.map(p => {
-            const pName = p.nama_menu || p.name || "Menu";
-            const pPrice = Number(p.harga !== undefined ? p.harga : (p.price || 0));
-            const pStock = Number(p.stok !== undefined ? p.stok : (p.stock !== undefined ? p.stock : 10));
-            const pId = p.id || pName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-            const pImg = p.image || p.gambar || (typeof getMenuImage === "function" ? getMenuImage(pName) : (typeof AIEngine !== "undefined" && AIEngine._findFallbackImage ? AIEngine._findFallbackImage(pName) : 'images/kopi-susu.jpg'));
-            const isOutOfStock = pStock <= 0;
+        const pName = p.nama_menu || p.name || "Menu";
+        const pPrice = Number(p.harga !== undefined ? p.harga : (p.price || 0));
+        const pStock = Number(p.stok !== undefined ? p.stok : (p.stock !== undefined ? p.stock : 10));
+        const pId = p.id || pName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const pImg = p.image || p.gambar || (typeof getMenuImage === "function" ? getMenuImage(pName) : (typeof AIEngine !== "undefined" && AIEngine._findFallbackImage ? AIEngine._findFallbackImage(pName) : 'images/kopi-susu.jpg'));
+        const isOutOfStock = pStock <= 0;
 
-            return `
+        return `
               <div class="ai-product-card-mini ${isOutOfStock ? 'is-out-of-stock' : ''}" data-id="${pId}">
                 <img src="${pImg}" alt="${pName}" class="ai-mini-img">
                 <div class="ai-mini-info">
                   <div class="ai-mini-title">${pName} ${isOutOfStock ? '<span style="color:#e63946;font-size:0.7rem;font-weight:700;">(Habis)</span>' : ''}</div>
                   <div class="ai-mini-price">${formatCurrency(pPrice)}</div>
                 </div>
-                ${isOutOfStock 
-                  ? `<button class="ai-mini-btn-add out-of-stock" disabled style="background:#a0aec0;cursor:not-allowed;opacity:0.75;box-shadow:none;">Habis</button>`
-                  : `<button class="ai-mini-btn-add" data-id="${pId}" data-name="${pName}">+ Keranjang</button>`
-                }
+                ${isOutOfStock
+            ? `<button class="ai-mini-btn-add out-of-stock" disabled style="background:#a0aec0;cursor:not-allowed;opacity:0.75;box-shadow:none;">Habis</button>`
+            : `<button class="ai-mini-btn-add" data-id="${pId}" data-name="${pName}">+ Keranjang</button>`
+          }
               </div>
             `;
-          }).join("")}
+      }).join("")}
         </div>
       `;
     }
@@ -473,7 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (res.success) {
             target.classList.add("added");
             target.textContent = "✓ Ditambah";
-            
+
             // Trigger cart badge & UI updates
             const counters = document.querySelectorAll(".cart-counter");
             if (counters.length > 0) {
